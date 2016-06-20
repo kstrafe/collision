@@ -35,6 +35,8 @@ fn main() {
 
 	let per = 60;
 	let mut cur = 0;
+	let mut speed = 0.0;
+	let gravity = 0.0981;
 
 	'main: loop {
 		for event in window.events() {
@@ -52,6 +54,7 @@ fn main() {
 
 		let oldpos = block.get_position();
 		if Key::Up.is_pressed() {
+			speed -= 0.5;
 			block.move2f(0.0, -1.0);
 		}
 		if Key::Down.is_pressed() {
@@ -64,12 +67,16 @@ fn main() {
 			block.move2f(1.0, 0.0);
 		}
 
+		speed += gravity;
+
+		block.move2f(0.0, speed);
 		let rect = block.get_global_bounds();
 		let left_bottom = Point(rect.left/100.0, (rect.top + rect.height)/100.0);
 		let right_bottom = Point((rect.left + rect.width)/100.0, (rect.top + rect.height)/100.0);
 		let line = Line(left_bottom, right_bottom);
 		if !net.collide_set(line.supercover()).all(|x| x == &None) {
 			block.set_position(&oldpos);
+			speed = 0.0;
 		}
 
 		window.clear(&Color::new_rgb(200, 2, 3));
