@@ -1,0 +1,10 @@
+[package]
+name = "collision"
+version = "0.1.0"
+authors = ["Bourgond Aries <macocio@gmail.com>"]
+
+[dependencies]
+acon = "0.5.1"
+rand = "0.3.14"
+sfml = "0.11.2"
+tile_net = { path = "../TileNet" }
