@@ -24,8 +24,12 @@ fn main() {
 	let mut block = RectangleShape::new().unwrap();
 	block.set_size(&Vector2f::new(100.0, 100.0));
 	block.set_fill_color(&Color::new_rgb(0, 0, 0));
+	let mut tile = RectangleShape::new().unwrap();
+	tile.set_size(&Vector2f::new(100.0, 100.0));
+	tile.set_fill_color(&Color::new_rgb(0, 200, 0));
 
-	let net = tile_net::TileNet::sample();
+	let mut net = tile_net::TileNet::sample();
+	*net.get_mut((3, 2)).unwrap() = Some(0);
 
 	window.set_framerate_limit(60);
 
@@ -70,6 +74,14 @@ fn main() {
 
 		window.clear(&Color::new_rgb(200, 2, 3));
 		window.draw(&block);
+		for (index, i) in net.view_box((0, 10, 0, 10)).enumerate() {
+			if let &Some(_) = i {
+				let col = (index % 10) as f32;
+				let row = (index / 10) as f32;
+				tile.set_position(&Vector2f::new(col*100.0, row*100.0));
+				window.draw(&tile);
+			}
+		}
 		window.display();
 	}
 }
