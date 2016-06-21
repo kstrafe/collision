@@ -24,11 +24,14 @@ fn main() {
 	let mut block = RectangleShape::new().unwrap();
 	block.set_size(&Vector2f::new(100.0, 100.0));
 	block.set_fill_color(&Color::new_rgb(0, 0, 0));
+	block.set_position2f(100.0, 0.0);
 	let mut tile = RectangleShape::new().unwrap();
 	tile.set_size(&Vector2f::new(100.0, 100.0));
 	tile.set_fill_color(&Color::new_rgb(0, 200, 0));
 
 	let mut net = tile_net::TileNet::sample();
+	*net.get_mut((3, 2)).unwrap() = Some(0);
+	(0..6).map(|x| { *net.get_mut((0, x)).unwrap() = Some(0); } ).count();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
 
 	window.set_framerate_limit(60);
