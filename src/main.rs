@@ -3,7 +3,8 @@ extern crate sfml;
 extern crate tile_net;
 
 use std::thread;
-use std::sync::mpsc::channel;
+use std::time::Duration;
+use std::sync::mpsc::{channel, Sender};
 
 use sfml::graphics::{CircleShape, Color, Font, RectangleShape, RenderTarget, RenderWindow, Shape,
                      Text, Transformable};
@@ -16,6 +17,7 @@ use std::env;
 use tile_net::*;
 
 fn main() {
+
 	let mut window = match RenderWindow::new(VideoMode::new_init(800, 600, 42),
 	                                         "Custom shape",
 	                                         window_style::CLOSE,
@@ -46,7 +48,7 @@ fn main() {
 	let per = 60;
 	let mut cur = 0;
 	let mut speed = 10000000000.0;
-	let gravity = 0.0981;
+	let mut gravity = 0.0981;
 
 	'main: loop {
 		for event in window.events() {
@@ -64,6 +66,7 @@ fn main() {
 
 		println!("{:?}", block.get_position());
 
+		let side_speed = 2.0;
 		let oldpos = block.get_position();
 		if Key::Up.is_pressed() {
 			speed -= 0.5;
@@ -73,13 +76,12 @@ fn main() {
 			block.move2f(0.0, 1.0);
 		}
 		if Key::Left.is_pressed() {
-			block.move2f(-1.0, 0.0);
+			block.move2f(-side_speed, 0.0);
 		}
 		if Key::Right.is_pressed() {
-			block.move2f(1.0, 0.0);
+			block.move2f(side_speed, 0.0);
 		}
-
-		speed += gravity;
+		gravity = 0.0;
 
 		let rect = block.get_global_bounds();
 		let left_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
@@ -89,7 +91,24 @@ fn main() {
 		let line = Line(left_bottom, right_bottom);
 		if !net.collide_set(line.supercover()).all(|x| x == &None) {
 			println!("Collided");
-			break 'main;
+			gravity = 0.0;
+			block.set_position(&oldpos);
+			speed = 0.0;
+		}
+
+		gravity = 0.0981;
+		speed += gravity;
+		let oldpos = block.get_position();
+
+		let rect = block.get_global_bounds();
+		let left_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
+		block.move2f(0.0, speed);
+		let rect = block.get_global_bounds();
+		let right_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
+		let line = Line(left_bottom, right_bottom);
+		if !net.collide_set(line.supercover()).all(|x| x == &None) {
+			println!("Collided");
+			gravity = 0.0;
 			block.set_position(&oldpos);
 			speed = 0.0;
 		}
