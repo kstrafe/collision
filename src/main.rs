@@ -2,6 +2,9 @@ extern crate rand;
 extern crate sfml;
 extern crate tile_net;
 
+use std::thread;
+use std::sync::mpsc::channel;
+
 use sfml::graphics::{CircleShape, Color, Font, RectangleShape, RenderTarget, RenderWindow, Shape,
                      Text, Transformable};
 use sfml::window::{ContextSettings, Key, VideoMode, event, window_style};
@@ -14,9 +17,9 @@ use tile_net::*;
 
 fn main() {
 	let mut window = match RenderWindow::new(VideoMode::new_init(800, 600, 42),
-		"Custom shape",
-		window_style::CLOSE,
-		&Default::default()) {
+	                                         "Custom shape",
+	                                         window_style::CLOSE,
+	                                         &Default::default()) {
 		Some(window) => window,
 		None => panic!("SHIT"),
 	};
@@ -31,29 +34,35 @@ fn main() {
 
 	let mut net = tile_net::TileNet::sample();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
-	(0..6).map(|x| { *net.get_mut((0, x)).unwrap() = Some(0); } ).count();
+	(0..6)
+		.map(|x| {
+			*net.get_mut((0, x)).unwrap() = Some(0);
+		})
+		.count();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
 
 	window.set_framerate_limit(60);
 
 	let per = 60;
 	let mut cur = 0;
-	let mut speed = 0.0;
+	let mut speed = 10000000000.0;
 	let gravity = 0.0981;
 
 	'main: loop {
 		for event in window.events() {
 			match event {
 				event::Closed => break 'main,
-				event::KeyPressed {code, ..} => {
+				event::KeyPressed { code, .. } => {
 					match code {
 						Key::Escape => break 'main,
-						_ => {},
+						_ => {}
 					}
 				}
-				_ => {},
+				_ => {}
 			}
 		}
+
+		println!("{:?}", block.get_position());
 
 		let oldpos = block.get_position();
 		if Key::Up.is_pressed() {
@@ -72,12 +81,15 @@ fn main() {
 
 		speed += gravity;
 
+		let rect = block.get_global_bounds();
+		let left_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
 		block.move2f(0.0, speed);
 		let rect = block.get_global_bounds();
-		let left_bottom = Point(rect.left/100.0, (rect.top + rect.height)/100.0);
-		let right_bottom = Point((rect.left + rect.width)/100.0, (rect.top + rect.height)/100.0);
+		let right_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
 		let line = Line(left_bottom, right_bottom);
 		if !net.collide_set(line.supercover()).all(|x| x == &None) {
+			println!("Collided");
+			break 'main;
 			block.set_position(&oldpos);
 			speed = 0.0;
 		}
@@ -88,7 +100,7 @@ fn main() {
 			if let &Some(_) = i {
 				let col = (index % 10) as f32;
 				let row = (index / 10) as f32;
-				tile.set_position(&Vector2f::new(col*100.0, row*100.0));
+				tile.set_position(&Vector2f::new(col * 100.0, row * 100.0));
 				window.draw(&tile);
 			}
 		}
