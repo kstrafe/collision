@@ -54,10 +54,14 @@ impl Collable for Rects {
 		where T: 'a,
 		      I: Iterator<Item = (i32, i32)>
 	{
-		let mov = self.mov;
+		let mut mov = self.mov;
 		self.mov = Vector(0.0, 0.0);
 		if set.all(Option::is_none) {
 			self.pos = self.pos + mov;
+			false
+		} else if mov.norm2sq() > 0.000001 {
+			mov.scale(0.5);
+			self.mov = mov;
 			true
 		} else {
 			false
@@ -108,12 +112,15 @@ fn main() {
 		}
 
 
-		let side_speed = 2.0;
+		let mut uppressed = false;
+		let side_speed = 4.0;
+		let vert_speed = 0.2;
 		if Key::Up.is_pressed() {
-			coller.enqueue(Vector(0.0, -0.5));
+			coller.enqueue(Vector(0.0, -vert_speed));
+			uppressed = true;
 		}
 		if Key::Down.is_pressed() {
-			coller.enqueue(Vector(0.0, 0.5));
+			coller.enqueue(Vector(0.0, vert_speed));
 		}
 		if Key::Left.is_pressed() {
 			coller.enqueue(Vector(-side_speed/100.0, 0.0));
@@ -121,8 +128,8 @@ fn main() {
 		if Key::Right.is_pressed() {
 			coller.enqueue(Vector(side_speed/100.0, 0.0));
 		}
-		rarer.run(|| println!("{:?}", coller));
 
+		rarer.run(|| println!("{:?}", coller));
 		rarer.run(|| {
 			net.collide_set(coller.tiles()).inspect(|x|
 				println!("{:?}", x)
@@ -130,11 +137,21 @@ fn main() {
 			}
 		);
 
-		let tiles = net.collide_set(coller.tiles());
-		if coller.resolve(tiles) {
-			coller.enqueue(Vector(0.0, 0.0981));
+		loop {
 			let tiles = net.collide_set(coller.tiles());
-			coller.resolve(tiles);
+			if !coller.resolve(tiles) {
+				break;
+			}
+		}
+
+		if ! uppressed {
+			coller.enqueue(Vector(0.0, gravity));
+			loop {
+				let tiles = net.collide_set(coller.tiles());
+				if !coller.resolve(tiles) {
+					break;
+				}
+			}
 		}
 
 		window.clear(&Color::new_rgb(200, 2, 3));
