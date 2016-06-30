@@ -4,3 +4,6 @@ all:
 
 fmt:
 	cargo fmt -- --write-mode diff
+
+fmto:
+	cargo fmt -- --write-mode overwrite
