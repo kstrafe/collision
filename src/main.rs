@@ -84,10 +84,10 @@ fn main() {
 		gravity = 0.0;
 
 		let rect = block.get_global_bounds();
-		let left_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
-		block.move2f(0.0, speed);
+		let left_bottom = Vector(rect.left / 100.0, (rect.top + rect.height) / 100.0);
+		// block.move2f(0.0, speed);
 		let rect = block.get_global_bounds();
-		let right_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
+		let right_bottom = Vector(rect.left / 100.0, (rect.top + rect.height) / 100.0);
 		let line = Line(left_bottom, right_bottom);
 		if !net.collide_set(line.supercover()).all(|x| x == &None) {
 			println!("Collided");
@@ -101,10 +101,10 @@ fn main() {
 		let oldpos = block.get_position();
 
 		let rect = block.get_global_bounds();
-		let left_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
+		let left_bottom = Vector(rect.left / 100.0, (rect.top + rect.height) / 100.0);
 		block.move2f(0.0, speed);
 		let rect = block.get_global_bounds();
-		let right_bottom = Point(rect.left / 100.0, (rect.top + rect.height) / 100.0);
+		let right_bottom = Vector(rect.left / 100.0, (rect.top + rect.height) / 100.0);
 		let line = Line(left_bottom, right_bottom);
 		if !net.collide_set(line.supercover()).all(|x| x == &None) {
 			println!("Collided");
