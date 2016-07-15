@@ -18,15 +18,37 @@ use std::env;
 use tile_net::*;
 use std::cell::RefCell;
 
+#[derive(Default)]
+struct A;
+#[derive(Default)]
+struct B;
+#[derive(Clone, Debug, Default)]
+struct C;
+
+impl A { fn x(&self) { println!("A"); } }
+impl B { fn x(&self) { println!("B"); } }
+impl C { fn x(&self) { println!("C"); } }
 macro_rules! fsm {
+	($($i:ident : $l:ty),*,) => {{
+		fsm!($($i: $l),*)
+	}};
+
 	($($i:ident : $l:ty),*) => {{
+		#[derive(Clone, Default)]
 		struct State {
 			$($i: $l),*
 		}
 
-		State {
-			$($i: Default::default()),*
+		impl State {
+			fn cycle(&self) {
+				println!("State");
+				$(
+					println!("{:?}", self.$i);
+				)*
+			}
 		}
+
+		State::default()
 	}};
 }
 
@@ -38,14 +60,18 @@ fn main() {
 	// async | Queue to a thread using obj.send(...)
 
 	// cycle:
-	let fsm = fsm! {
-		audio: i32,
-		video: f64,
+	let mut fsm = fsm! {
+		audio: C,
+		video: Box<f64>,
 		computer: String,
-		lesser: Vec<(i32, f32)>
-		// =>
+		lesser: Vec<(i32, f32)>,
 		// video: login.logState, login.qListen;
 	};
+
+	fsm.cycle();
+	fsm.audio.x();
+	fsm.lesser.push((100, 0.5));
+	fsm.computer = String::from("My Computer");
 
 	println!("{:?}", fsm.computer);
 
