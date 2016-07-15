@@ -52,6 +52,25 @@ macro_rules! fsm {
 	}};
 }
 
+macro_rules! as_expr { ($x:expr) => ($x) }
+macro_rules! prep_i {
+	(($i:expr) ($($prev:tt)*) ($($cur:tt)*) ; $($rest:tt)*)  => {
+		prep_i!(($i) ($($prev)* $i.$($cur)*;) () $($rest)*)
+	};
+	(($i:expr) ($($prev:tt)*) ($($cur:tt)*) $t:tt $($rest:tt)*)  => {
+		prep_i!(($i) ($($prev)*) ($($cur)* $t) $($rest)*)
+	};
+	(($i:expr) ($($prev:tt)*) ())  => {
+		as_expr!({$($prev)*})
+	};
+}
+
+macro_rules! prep {
+	($i:expr => $($t:tt)*) => {
+		prep_i!(($i) () () $($t)*)
+	};
+}
+
 fn main() {
 
 	// Three types of messages
@@ -72,6 +91,8 @@ fn main() {
 	fsm.audio.x();
 	fsm.lesser.push((100, 0.5));
 	fsm.computer = String::from("My Computer");
+
+	prep!(fsm => audio.x(); );
 
 	println!("{:?}", fsm.computer);
 
