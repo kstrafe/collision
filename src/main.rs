@@ -4,7 +4,8 @@ extern crate tile_net;
 
 use std::thread;
 use std::time::Duration;
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::collections::BTreeMap;
 
 use sfml::graphics::{CircleShape, Color, Font, RectangleShape, RenderTarget, RenderWindow, Shape,
                      Text, Transformable, Drawable, RenderStates};
@@ -15,6 +16,178 @@ use rand::{Rng, thread_rng};
 use std::f32::consts::PI;
 use std::env;
 use tile_net::*;
+use std::cell::RefCell;
+
+macro_rules! fsm {
+	($($i:ident : $l:ty),*) => {{
+		struct State {
+			$($i: $l),*
+		}
+
+		State {
+			$($i: Default::default()),*
+		}
+	}};
+}
+
+fn main() {
+
+	// Three types of messages
+	// cycle | Queue for next cycle using obj.send(...)
+	// direct | Call a method directly using Fn(x) -> (x)
+	// async | Queue to a thread using obj.send(...)
+
+	// cycle:
+	let fsm = fsm! {
+		audio: i32,
+		video: f64,
+		computer: String,
+		lesser: Vec<(i32, f32)>
+		// =>
+		// video: login.logState, login.qListen;
+	};
+
+	println!("{:?}", fsm.computer);
+
+	/*
+	con! {
+		audio: login
+	};
+	*/
+
+
+	// let (tx, rx) = channel();
+	// => Means a channel between two objects
+	// The objects need to assign names to the channels
+	// The left object will get
+
+	return;
+
+	let mut window = create_window();
+	let mut net = create_tilenet();
+	let mut tile = create_tile();
+	let mut coller = Rects::new();
+	let mut rarer = Rare::new(60);
+	let mut gravity = 0.0981;
+
+	'main: loop {
+		if handle_events(&mut window) {
+			break 'main;
+		}
+
+
+		let mut uppressed = false;
+		let side_speed = 4.0;
+		let vert_speed = 0.2;
+		if Key::Up.is_pressed() {
+			coller.enqueue(Vector(0.0, -vert_speed));
+			uppressed = true;
+		}
+		if Key::Down.is_pressed() {
+			coller.enqueue(Vector(0.0, vert_speed));
+		}
+		if Key::Left.is_pressed() {
+			coller.enqueue(Vector(-side_speed/100.0, 0.0));
+		}
+		if Key::Right.is_pressed() {
+			coller.enqueue(Vector(side_speed/100.0, 0.0));
+		}
+
+		rarer.run(|| println!("{:?}", coller));
+		rarer.run(|| {
+			net.collide_set(coller.tiles()).inspect(|x|
+				println!("{:?}", x)
+			).count();
+			}
+		);
+
+		loop {
+			let tiles = net.collide_set(coller.tiles());
+			if ! coller.resolve(tiles) {
+				break;
+			}
+		}
+
+		if ! uppressed {
+			coller.enqueue(Vector(0.0, gravity));
+			loop {
+				let tiles = net.collide_set(coller.tiles());
+				if !coller.resolve(tiles) {
+					break;
+				}
+			}
+		}
+
+		window.clear(&Color::new_rgb(200, 2, 3));
+		for i in net.view_box((3, 13, 0, 10)) {
+			if let (&Some(_), col, row) = i {
+				let col = col as f32;
+				let row = row as f32;
+				tile.set_position(&Vector2f::new(col * 100.0, row * 100.0));
+				window.draw(&tile);
+			}
+		}
+
+		window.draw(&coller);
+
+		window.display();
+	}
+}
+
+fn create_window() -> RenderWindow {
+	let mut window = RenderWindow::new(VideoMode::new_init(800, 600, 42),
+	                                   "Custom shape",
+	                                   window_style::CLOSE,
+	                                   &Default::default())
+		.unwrap_or_else(|| {
+			panic!("Could not create window");
+		});
+	window.set_framerate_limit(60);
+	window
+}
+
+fn create_tilenet() -> tile_net::TileNet<usize> {
+	let mut net = tile_net::TileNet::sample();
+	*net.get_mut((3, 2)).unwrap() = Some(0);
+	(0..6)
+		.map(|x| {
+			*net.get_mut((0, x)).unwrap() = Some(0);
+		})
+		.count();
+	*net.get_mut((3, 2)).unwrap() = Some(0);
+	net
+}
+
+fn create_block<'a>() -> RectangleShape<'a> {
+	let mut block = RectangleShape::new().unwrap();
+	block.set_size(&Vector2f::new(100.0, 100.0));
+	block.set_fill_color(&Color::new_rgb(0, 0, 0));
+	block.set_position2f(100.0, 0.0);
+	block
+}
+
+fn create_tile<'a>() -> RectangleShape<'a> {
+	let mut tile = RectangleShape::new().unwrap();
+	tile.set_size(&Vector2f::new(100.0, 100.0));
+	tile.set_fill_color(&Color::new_rgb(0, 200, 0));
+	tile
+}
+
+fn handle_events(window: &mut RenderWindow) -> bool {
+	for event in window.events() {
+		match event {
+			event::Closed => return true,
+			event::KeyPressed { code, .. } => {
+				match code {
+					Key::Escape => return true,
+					_ => {}
+				}
+			}
+			_ => {}
+		}
+	}
+	false
+}
 
 #[derive(Debug)]
 struct Rects {
@@ -97,130 +270,4 @@ impl Rare {
 	}
 }
 
-fn main() {
 
-	let mut window = create_window();
-	let mut net = create_tilenet();
-	let mut tile = create_tile();
-	let mut coller = Rects::new();
-	let mut rarer = Rare::new(60);
-	let mut gravity = 0.0981;
-
-	'main: loop {
-		if handle_events(&mut window) {
-			break 'main;
-		}
-
-
-		let mut uppressed = false;
-		let side_speed = 4.0;
-		let vert_speed = 0.2;
-		if Key::Up.is_pressed() {
-			coller.enqueue(Vector(0.0, -vert_speed));
-			uppressed = true;
-		}
-		if Key::Down.is_pressed() {
-			coller.enqueue(Vector(0.0, vert_speed));
-		}
-		if Key::Left.is_pressed() {
-			coller.enqueue(Vector(-side_speed/100.0, 0.0));
-		}
-		if Key::Right.is_pressed() {
-			coller.enqueue(Vector(side_speed/100.0, 0.0));
-		}
-
-		rarer.run(|| println!("{:?}", coller));
-		rarer.run(|| {
-			net.collide_set(coller.tiles()).inspect(|x|
-				println!("{:?}", x)
-			).count();
-			}
-		);
-
-		loop {
-			let tiles = net.collide_set(coller.tiles());
-			if !coller.resolve(tiles) {
-				break;
-			}
-		}
-
-		if ! uppressed {
-			coller.enqueue(Vector(0.0, gravity));
-			loop {
-				let tiles = net.collide_set(coller.tiles());
-				if !coller.resolve(tiles) {
-					break;
-				}
-			}
-		}
-
-		window.clear(&Color::new_rgb(200, 2, 3));
-		for (index, i) in net.view_box((0, 10, 0, 10)).enumerate() {
-			if let &Some(_) = i {
-				let col = (index % 10) as f32;
-				let row = (index / 10) as f32;
-				tile.set_position(&Vector2f::new(col * 100.0, row * 100.0));
-				window.draw(&tile);
-			}
-		}
-
-		window.draw(&coller);
-
-		window.display();
-	}
-}
-
-fn create_window() -> RenderWindow {
-	let mut window = RenderWindow::new(VideoMode::new_init(800, 600, 42),
-	                                   "Custom shape",
-	                                   window_style::CLOSE,
-	                                   &Default::default())
-		.unwrap_or_else(|| {
-			panic!("Could not create window");
-		});
-	window.set_framerate_limit(60);
-	window
-}
-
-fn create_tilenet() -> tile_net::TileNet<usize> {
-	let mut net = tile_net::TileNet::sample();
-	*net.get_mut((3, 2)).unwrap() = Some(0);
-	(0..6)
-		.map(|x| {
-			*net.get_mut((0, x)).unwrap() = Some(0);
-		})
-		.count();
-	*net.get_mut((3, 2)).unwrap() = Some(0);
-	net
-}
-
-fn create_block<'a>() -> RectangleShape<'a> {
-	let mut block = RectangleShape::new().unwrap();
-	block.set_size(&Vector2f::new(100.0, 100.0));
-	block.set_fill_color(&Color::new_rgb(0, 0, 0));
-	block.set_position2f(100.0, 0.0);
-	block
-}
-
-fn create_tile<'a>() -> RectangleShape<'a> {
-	let mut tile = RectangleShape::new().unwrap();
-	tile.set_size(&Vector2f::new(100.0, 100.0));
-	tile.set_fill_color(&Color::new_rgb(0, 200, 0));
-	tile
-}
-
-fn handle_events(window: &mut RenderWindow) -> bool {
-	for event in window.events() {
-		match event {
-			event::Closed => return true,
-			event::KeyPressed { code, .. } => {
-				match code {
-					Key::Escape => return true,
-					_ => {}
-				}
-			}
-			_ => {}
-		}
-	}
-	false
-}
