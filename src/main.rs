@@ -1,6 +1,7 @@
 extern crate rand;
 extern crate sfml;
 extern crate tile_net;
+extern crate time;
 
 use std::thread;
 use std::time::Duration;
@@ -18,23 +19,51 @@ use std::env;
 use tile_net::*;
 use std::cell::RefCell;
 
-#[derive(Default)]
-struct A;
-#[derive(Default)]
-struct B;
+#[derive(Debug, Default)]
+struct A {
+	c: Option<Receiver<i32>>
+}
+
+impl A {
+	fn create(&mut self) -> Sender<i32> {
+		let (tx, rx) = channel();
+		self.c = Some(rx);
+		tx
+	}
+}
+
+#[derive(Debug, Default)]
+struct B {
+	c: Option<Sender<i32>>
+}
+
+impl B {
+	fn setc(&mut self, sender: Sender<i32>) {
+		self.c = Some(sender);
+	}
+}
+
 #[derive(Clone, Debug, Default)]
 struct C;
 
-impl A { fn x(&self) { println!("A"); } }
-impl B { fn x(&self) { println!("B"); } }
+impl A {
+	fn x(&self) { println!("A"); }
+	fn cycle(&self) {
+
+	}
+}
+impl B {
+	fn x(&self) { println!("B"); }
+}
 impl C { fn x(&self) { println!("C"); } }
+
 macro_rules! fsm {
 	($($i:ident : $l:ty),*,) => {{
 		fsm!($($i: $l),*)
 	}};
 
 	($($i:ident : $l:ty),*) => {{
-		#[derive(Clone, Default)]
+		#[derive(Default)]
 		struct State {
 			$($i: $l),*
 		}
@@ -73,6 +102,22 @@ macro_rules! prep {
 
 fn main() {
 
+	/*
+	let mut r = thread_rng();
+	let mut mat = vec![];
+	for _ in 0..(3200*1000)*(3) {
+		mat.push(r.next_f64());
+	}
+
+
+	let begin = time::now();
+	mat.sort_by(|a, b| a.partial_cmp(b).unwrap());
+	let end = time::now();
+	let diff = end - begin;
+	println!("{:?}", diff);
+	return;
+	*/
+
 	// Three types of messages
 	// cycle | Queue for next cycle using obj.send(...)
 	// direct | Call a method directly using Fn(x) -> (x)
@@ -80,21 +125,16 @@ fn main() {
 
 	// cycle:
 	let mut fsm = fsm! {
-		audio: C,
-		video: Box<f64>,
-		computer: String,
-		lesser: Vec<(i32, f32)>,
+		audio: A,
+		some: B,
 		// video: login.logState, login.qListen;
 	};
 
-	fsm.cycle();
-	fsm.audio.x();
-	fsm.lesser.push((100, 0.5));
-	fsm.computer = String::from("My Computer");
+	fsm.some.setc(fsm.audio.create());
 
-	prep!(fsm => audio.x(); );
-
-	println!("{:?}", fsm.computer);
+	loop {
+		fsm.cycle();
+	}
 
 	/*
 	con! {
