@@ -17,11 +17,12 @@ use rand::{Rng, thread_rng};
 use std::f32::consts::PI;
 use std::env;
 use tile_net::*;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 #[derive(Debug, Default)]
 struct A {
-	c: Option<Receiver<i32>>
+	c: Option<Receiver<i32>>,
+	d: Cell<i32>,
 }
 
 impl A {
@@ -34,12 +35,17 @@ impl A {
 
 #[derive(Debug, Default)]
 struct B {
-	c: Option<Sender<i32>>
+	c: Option<Sender<i32>>,
+	i: Cell<usize>,
+	f: Option<Sender<()>>,
 }
 
 impl B {
 	fn setc(&mut self, sender: Sender<i32>) {
 		self.c = Some(sender);
+	}
+	fn setf(&mut self, sender: Sender<()>) {
+		self.f = Some(sender);
 	}
 }
 
@@ -48,13 +54,31 @@ struct C;
 
 impl A {
 	fn x(&self) { println!("A"); }
-	fn cycle(&self) {
-
+	fn cycle(&mut self) {
+		if let Some(ref x) = self.c {
+			if let Ok(n) = x.try_recv() {
+				self.d.set(n);
+			}
+		}
 	}
 }
+
 impl B {
 	fn x(&self) { println!("B"); }
+	fn cycle(&mut self) {
+		if let Some(ref x) = self.c {
+			self.i.set(self.i.get() + 1);
+			x.send(rand::random());
+		}
+
+		if self.i.get() >= 1000000 {
+			if let Some(ref x) = self.f {
+				x.send(());
+			}
+		}
+	}
 }
+
 impl C { fn x(&self) { println!("C"); } }
 
 macro_rules! fsm {
@@ -69,10 +93,9 @@ macro_rules! fsm {
 		}
 
 		impl State {
-			fn cycle(&self) {
-				println!("State");
+			fn cycle(&mut self) {
 				$(
-					println!("{:?}", self.$i);
+					self.$i.cycle();
 				)*
 			}
 		}
@@ -104,17 +127,19 @@ fn main() {
 
 	/*
 	let mut r = thread_rng();
-	let mut mat = vec![];
-	for _ in 0..(3200*1000)*(3) {
-		mat.push(r.next_f64());
+	for _ in 0..10 {
+		let mut mat = vec![];
+		for i in 0..(3200*1000)*(3) {
+			mat.push(/*r.next_f64()*/ i as f64);
+		}
+
+
+		let begin = time::now();
+		mat.sort_by(|a, b| a.partial_cmp(b).unwrap());
+		let end = time::now();
+		let diff = end - begin;
+		println!("{:?}", diff);
 	}
-
-
-	let begin = time::now();
-	mat.sort_by(|a, b| a.partial_cmp(b).unwrap());
-	let end = time::now();
-	let diff = end - begin;
-	println!("{:?}", diff);
 	return;
 	*/
 
@@ -131,23 +156,42 @@ fn main() {
 	};
 
 	fsm.some.setc(fsm.audio.create());
+	let (tx, rx) = channel();
+	fsm.some.setf(tx);
 
+	let begin = time::now();
 	loop {
 		fsm.cycle();
+		if let Ok(()) = rx.try_recv() {
+			break;
+		}
 	}
+	let end = time::now();
+
+	println!("{:?}", end - begin);
+	println!("{:?}", fsm.audio);
+
+	let mut rr: i32 = 0;
+	let begin = time::now();
+	for _ in 0..1000000 {
+		rr = rand::random();
+	}
+	let end = time::now();
+	println!("{:?}", end - begin);
+	println!("{:?}", rr);
 
 	/*
-	con! {
-		audio: login
-	};
+		Ideally:
+
+		let mut fsm = fsm! {
+			...
+		};
+
+		con!(fsm,
+			audio control <=> interface,
+		);
+
 	*/
-
-
-	// let (tx, rx) = channel();
-	// => Means a channel between two objects
-	// The objects need to assign names to the channels
-	// The left object will get
-
 	return;
 
 	let mut window = create_window();
