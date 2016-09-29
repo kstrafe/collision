@@ -53,7 +53,9 @@ impl B {
 struct C;
 
 impl A {
-	fn x(&self) { println!("A"); }
+	fn x(&self) {
+		println!("A");
+	}
 	fn cycle(&mut self) {
 		if let Some(ref x) = self.c {
 			if let Ok(n) = x.try_recv() {
@@ -64,7 +66,9 @@ impl A {
 }
 
 impl B {
-	fn x(&self) { println!("B"); }
+	fn x(&self) {
+		println!("B");
+	}
 	fn cycle(&mut self) {
 		if let Some(ref x) = self.c {
 			self.i.set(self.i.get() + 1);
@@ -79,7 +83,11 @@ impl B {
 	}
 }
 
-impl C { fn x(&self) { println!("C"); } }
+impl C {
+	fn x(&self) {
+		println!("C");
+	}
+}
 
 macro_rules! fsm {
 	($($i:ident : $l:ty),*,) => {{
@@ -125,23 +133,22 @@ macro_rules! prep {
 
 fn main() {
 
-	/*
-	let mut r = thread_rng();
-	for _ in 0..10 {
-		let mut mat = vec![];
-		for i in 0..(3200*1000)*(3) {
-			mat.push(/*r.next_f64()*/ i as f64);
-		}
-
-
-		let begin = time::now();
-		mat.sort_by(|a, b| a.partial_cmp(b).unwrap());
-		let end = time::now();
-		let diff = end - begin;
-		println!("{:?}", diff);
-	}
-	return;
-	*/
+	// let mut r = thread_rng();
+	// for _ in 0..10 {
+	// let mut mat = vec![];
+	// for i in 0..(3200*1000)*(3) {
+	// mat.push(/*r.next_f64()*/ i as f64);
+	// }
+	//
+	//
+	// let begin = time::now();
+	// mat.sort_by(|a, b| a.partial_cmp(b).unwrap());
+	// let end = time::now();
+	// let diff = end - begin;
+	// println!("{:?}", diff);
+	// }
+	// return;
+	//
 
 	// Three types of messages
 	// cycle | Queue for next cycle using obj.send(...)
@@ -180,19 +187,17 @@ fn main() {
 	println!("{:?}", end - begin);
 	println!("{:?}", rr);
 
-	/*
-		Ideally:
-
-		let mut fsm = fsm! {
-			...
-		};
-
-		con!(fsm,
-			audio control <=> interface,
-		);
-
-	*/
-	return;
+	// Ideally:
+	//
+	// let mut fsm = fsm! {
+	// ...
+	// };
+	//
+	// con!(fsm,
+	// audio control <=> interface,
+	// );
+	//
+	//
 
 	let mut window = create_window();
 	let mut net = create_tilenet();
@@ -208,7 +213,7 @@ fn main() {
 
 
 		let mut uppressed = false;
-		let side_speed = 4.0;
+		let side_speed = 40000.0;
 		let vert_speed = 0.2;
 		if Key::Up.is_pressed() {
 			coller.enqueue(Vector(0.0, -vert_speed));
@@ -218,28 +223,27 @@ fn main() {
 			coller.enqueue(Vector(0.0, vert_speed));
 		}
 		if Key::Left.is_pressed() {
-			coller.enqueue(Vector(-side_speed/100.0, 0.0));
+			coller.enqueue(Vector(-side_speed / 100.0, 0.0));
 		}
 		if Key::Right.is_pressed() {
-			coller.enqueue(Vector(side_speed/100.0, 0.0));
+			coller.enqueue(Vector(side_speed / 100000.0, 0.0));
 		}
 
 		rarer.run(|| println!("{:?}", coller));
 		rarer.run(|| {
-			net.collide_set(coller.tiles()).inspect(|x|
-				println!("{:?}", x)
-			).count();
-			}
-		);
+			net.collide_set(coller.tiles())
+				.inspect(|x| println!("{:?}", x))
+				.count();
+		});
 
 		loop {
 			let tiles = net.collide_set(coller.tiles());
-			if ! coller.resolve(tiles) {
+			if !coller.resolve(tiles) {
 				break;
 			}
 		}
 
-		if ! uppressed {
+		if !uppressed {
 			coller.enqueue(Vector(0.0, gravity));
 			loop {
 				let tiles = net.collide_set(coller.tiles());
@@ -250,7 +254,7 @@ fn main() {
 		}
 
 		window.clear(&Color::new_rgb(200, 2, 3));
-		for i in net.view_box((3, 13, 0, 10)) {
+		for i in net.view_box((0, 10, 0, 10)) {
 			if let (&Some(_), col, row) = i {
 				let col = col as f32;
 				let row = row as f32;
@@ -376,7 +380,7 @@ impl Collable for Rects {
 impl Drawable for Rects {
 	fn draw<R: RenderTarget>(&self, rt: &mut R, _: &mut RenderStates) {
 		let mut block = create_block();
-		block.set_position(&Vector2f::new(self.pos.0*100.0, self.pos.1*100.0));
+		block.set_position(&Vector2f::new(self.pos.0 * 100.0, self.pos.1 * 100.0));
 		rt.draw(&block);
 	}
 }
@@ -388,7 +392,10 @@ struct Rare {
 
 impl Rare {
 	fn new(every: usize) -> Rare {
-		Rare { count: 0, every: every }
+		Rare {
+			count: 0,
+			every: every,
+		}
 	}
 
 	fn run<F: Fn()>(&mut self, function: F) {
@@ -400,5 +407,3 @@ impl Rare {
 		}
 	}
 }
-
-
