@@ -204,7 +204,8 @@ fn main() {
 	let mut tile = create_tile();
 	let mut coller = Rects::new();
 	let mut rarer = Rare::new(60);
-	let mut gravity = 0.0981;
+	let mut gravity = 0.00981;
+	let mut hit_ground = false;
 
 	'main: loop {
 		if handle_events(&mut window) {
@@ -213,20 +214,13 @@ fn main() {
 
 
 		let mut uppressed = false;
-		let side_speed = 40000.0;
+		let side_speed = 0.02;
 		let vert_speed = 0.2;
-		if Key::Up.is_pressed() {
-			coller.enqueue(Vector(0.0, -vert_speed));
-			uppressed = true;
-		}
-		if Key::Down.is_pressed() {
-			coller.enqueue(Vector(0.0, vert_speed));
-		}
 		if Key::Left.is_pressed() {
-			coller.enqueue(Vector(-side_speed / 100.0, 0.0));
+			coller.enqueue(Vector(-side_speed, 0.0));
 		}
 		if Key::Right.is_pressed() {
-			coller.enqueue(Vector(side_speed / 100000.0, 0.0));
+			coller.enqueue(Vector(side_speed, 0.0));
 		}
 
 		rarer.run(|| println!("{:?}", coller));
@@ -243,14 +237,26 @@ fn main() {
 			}
 		}
 
+		if Key::Up.is_pressed() {
+			if hit_ground {
+				coller.enqueue(Vector(0.0, -vert_speed));
+				uppressed = true;
+				hit_ground = false;
+			}
+		}
+		if Key::Down.is_pressed() {
+			coller.enqueue(Vector(0.0, vert_speed));
+		}
+
 		if !uppressed {
 			coller.enqueue(Vector(0.0, gravity));
-			loop {
-				let tiles = net.collide_set(coller.tiles());
-				if !coller.resolve(tiles) {
-					break;
-				}
+		}
+		loop {
+			let tiles = net.collide_set(coller.tiles());
+			if !coller.resolve(tiles) {
+				break;
 			}
+			hit_ground = true;
 		}
 
 		window.clear(&Color::new_rgb(200, 2, 3));
@@ -287,6 +293,7 @@ fn create_tilenet() -> tile_net::TileNet<usize> {
 	(0..6)
 		.map(|x| {
 			*net.get_mut((0, x)).unwrap() = Some(0);
+			*net.get_mut((7, x)).unwrap() = Some(0);
 		})
 		.count();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
@@ -295,7 +302,7 @@ fn create_tilenet() -> tile_net::TileNet<usize> {
 
 fn create_block<'a>() -> RectangleShape<'a> {
 	let mut block = RectangleShape::new().unwrap();
-	block.set_size(&Vector2f::new(100.0, 100.0));
+	block.set_size(&Vector2f::new(50.0, 50.0));
 	block.set_fill_color(&Color::new_rgb(0, 0, 0));
 	block.set_position2f(100.0, 0.0);
 	block
@@ -334,7 +341,7 @@ struct Rects {
 impl Rects {
 	fn new() -> Rects {
 		Rects {
-			pts: vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)],
+			pts: vec![(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)],
 			pos: Vector(1.0, 0.0),
 			mov: Vector(0.0, 0.0),
 		}
@@ -366,9 +373,10 @@ impl Collable for Rects {
 		self.mov = Vector(0.0, 0.0);
 		if set.all(Option::is_none) {
 			self.pos = self.pos + mov;
+			self.mov = Vector(0.0, mov.1);
 			false
-		} else if mov.norm2sq() > 0.000001 {
-			mov.scale(0.5);
+		} else if mov.norm2sq() > 1e-6 {
+			mov.scale(0.99);
 			self.mov = mov;
 			true
 		} else {
