@@ -109,8 +109,21 @@ fn main() {
 			any_col = true;
 		}
 
+		info!["pos"; "pos" => format!["{:?}", coller.pos]];
+		let xs = coller.pos.0 as i32;
+		let ys = coller.pos.1 as i32;
+		let xe = xs + 5;
+		let ye = ys + 5;
+		let xs = if xs-5 < 0 { 0 } else { xs-5 };
+		let ys = if ys-5 < 0 { 0 } else { ys-5 };
+
+		let xe = xe as usize;
+		let ye = ye as usize;
+		let xs = xs as usize;
+		let ys = ys as usize;
+
 		window.clear(&Color::new_rgb(200, 2, 3));
-		for i in net.view_box((0, 10, 0, 10)) {
+		for i in net.view_box((xs, xe, ys, ye)) {
 			if let (&Some(_), col, row) = i {
 				let col = col as f32;
 				let row = row as f32;
