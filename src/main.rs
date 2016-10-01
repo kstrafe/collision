@@ -171,7 +171,7 @@ fn main() {
 
 		let mut uppressed = false;
 		let side_speed = 0.02;
-		let vert_speed = 0.2;
+		let vert_speed = 0.186;
 		if Key::Left.is_pressed() {
 			coller.enqueue(Vector(-side_speed, 0.0));
 		}
@@ -194,25 +194,31 @@ fn main() {
 		}
 
 		if Key::Up.is_pressed() {
-			if hit_ground {
+			if coller.jmp {
 				coller.enqueue(Vector(0.0, -vert_speed));
-				uppressed = true;
-				hit_ground = false;
+				coller.jmp = false;
 			}
 		}
 		if Key::Down.is_pressed() {
 			coller.enqueue(Vector(0.0, vert_speed));
 		}
 
-		if !uppressed {
-			coller.enqueue(Vector(0.0, gravity));
-		}
+		coller.enqueue(Vector(0.0, gravity));
+		let mut any_col = false;
 		loop {
+			let down_speed = coller.queued().1;
+			let if_break_jmp = down_speed > 1e-6;
 			let tiles = net.collide_set(coller.tiles());
 			if !coller.resolve(tiles) {
+				if any_col == false {
+					coller.jmp = false;
+				}
 				break;
 			}
-			hit_ground = true;
+			if if_break_jmp {
+				coller.jmp = true;
+			}
+			any_col = true;
 		}
 
 		window.clear(&Color::new_rgb(200, 2, 3));
@@ -264,7 +270,7 @@ fn create_block<'a>() -> RectangleShape<'a> {
 	let mut block = RectangleShape::new().unwrap();
 	block.set_size(&Vector2f::new(50.0, 50.0));
 	block.set_fill_color(&Color::new_rgb(0, 0, 0));
-	block.set_position2f(100.0, 400.0);
+	block.set_position2f(100.0, 100.0);
 	block
 }
 
@@ -296,6 +302,7 @@ struct Rects {
 	pts: Vec<(f32, f32)>,
 	pos: Vector,
 	mov: Vector,
+	jmp: bool,
 }
 
 impl Rects {
@@ -304,6 +311,7 @@ impl Rects {
 			pts: vec![(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)],
 			pos: Vector(1.0, 1.0),
 			mov: Vector(0.0, 0.0),
+			jmp: false,
 		}
 	}
 
