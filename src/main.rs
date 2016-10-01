@@ -1,5 +1,13 @@
+extern crate isatty;
 extern crate rand;
 extern crate sfml;
+#[macro_use (o, slog_log, slog_trace, slog_debug, slog_info, slog_warn, slog_error)]
+extern crate slog;
+extern crate slog_json;
+#[macro_use]
+extern crate slog_scope;
+extern crate slog_stream;
+extern crate slog_term;
 extern crate tile_net;
 extern crate time;
 
@@ -131,8 +139,31 @@ macro_rules! prep {
 	};
 }
 
+use slog::DrainExt;
+
+fn setup_logger() {
+	let logger =
+		if isatty::stderr_isatty() {
+			slog::Logger::root(slog_term::streamer().async().stderr().full().use_utc_timestamp().build().ignore_err(), o![])
+		} else {
+			slog::Logger::root(slog_stream::stream(std::io::stderr(), slog_json::default()).fuse(), o![])
+		};
+	slog_scope::set_global_logger(logger);
+}
+
+fn coolfun() {
+	info!["This func is too cool!"];
+}
+
 fn main() {
 
+	setup_logger();
+	info!("Hello logger!"; "1" => "A value", "something" => "else");
+	slog_scope::scope(slog_scope::logger().new(o!["context" => "coolfun"]), coolfun);
+	return;
+
+	Line(Vector(0.0, 0.0), Vector(3.0, 3.0)).supercover()
+		.inspect(|x| println!("{:?}", x)).count();
 	// let mut r = thread_rng();
 	// for _ in 0..10 {
 	// let mut mat = vec![];
@@ -226,7 +257,7 @@ fn main() {
 		rarer.run(|| println!("{:?}", coller));
 		rarer.run(|| {
 			net.collide_set(coller.tiles())
-				.inspect(|x| println!("{:?}", x))
+				.inspect(|x| info!("collides"; "col" => format!["{:?}", x]))
 				.count();
 		});
 
