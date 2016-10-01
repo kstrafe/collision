@@ -21,133 +21,23 @@ use sfml::graphics::{CircleShape, Color, Font, RectangleShape, RenderTarget, Ren
 use sfml::window::{ContextSettings, Key, VideoMode, event, window_style};
 use sfml::system::{Clock, Time, Vector2f};
 use sfml::audio::{Sound, SoundBuffer, SoundSource};
-use rand::{Rng, thread_rng};
-use std::f32::consts::PI;
-use std::env;
 use tile_net::*;
-use std::cell::{Cell, RefCell};
-
-#[derive(Debug, Default)]
-struct A {
-	c: Option<Receiver<i32>>,
-	d: Cell<i32>,
-}
-
-impl A {
-	fn create(&mut self) -> Sender<i32> {
-		let (tx, rx) = channel();
-		self.c = Some(rx);
-		tx
-	}
-}
-
-#[derive(Debug, Default)]
-struct B {
-	c: Option<Sender<i32>>,
-	i: Cell<usize>,
-	f: Option<Sender<()>>,
-}
-
-impl B {
-	fn setc(&mut self, sender: Sender<i32>) {
-		self.c = Some(sender);
-	}
-	fn setf(&mut self, sender: Sender<()>) {
-		self.f = Some(sender);
-	}
-}
-
-#[derive(Clone, Debug, Default)]
-struct C;
-
-impl A {
-	fn x(&self) {
-		println!("A");
-	}
-	fn cycle(&mut self) {
-		if let Some(ref x) = self.c {
-			if let Ok(n) = x.try_recv() {
-				self.d.set(n);
-			}
-		}
-	}
-}
-
-impl B {
-	fn x(&self) {
-		println!("B");
-	}
-	fn cycle(&mut self) {
-		if let Some(ref x) = self.c {
-			self.i.set(self.i.get() + 1);
-			x.send(rand::random());
-		}
-
-		if self.i.get() >= 1000000 {
-			if let Some(ref x) = self.f {
-				x.send(());
-			}
-		}
-	}
-}
-
-impl C {
-	fn x(&self) {
-		println!("C");
-	}
-}
-
-macro_rules! fsm {
-	($($i:ident : $l:ty),*,) => {{
-		fsm!($($i: $l),*)
-	}};
-
-	($($i:ident : $l:ty),*) => {{
-		#[derive(Default)]
-		struct State {
-			$($i: $l),*
-		}
-
-		impl State {
-			fn cycle(&mut self) {
-				$(
-					self.$i.cycle();
-				)*
-			}
-		}
-
-		State::default()
-	}};
-}
-
-macro_rules! as_expr { ($x:expr) => ($x) }
-macro_rules! prep_i {
-	(($i:expr) ($($prev:tt)*) ($($cur:tt)*) ; $($rest:tt)*)  => {
-		prep_i!(($i) ($($prev)* $i.$($cur)*;) () $($rest)*)
-	};
-	(($i:expr) ($($prev:tt)*) ($($cur:tt)*) $t:tt $($rest:tt)*)  => {
-		prep_i!(($i) ($($prev)*) ($($cur)* $t) $($rest)*)
-	};
-	(($i:expr) ($($prev:tt)*) ())  => {
-		as_expr!({$($prev)*})
-	};
-}
-
-macro_rules! prep {
-	($i:expr => $($t:tt)*) => {
-		prep_i!(($i) () () $($t)*)
-	};
-}
-
 use slog::DrainExt;
 
 fn setup_logger() {
-	let logger =
-		if isatty::stderr_isatty() {
-			slog::Logger::root(slog_term::streamer().async().stderr().full().use_utc_timestamp().build().ignore_err(), o![])
-		} else {
-			slog::Logger::root(slog_stream::stream(std::io::stderr(), slog_json::default()).fuse(), o![])
-		};
+	let logger = if isatty::stderr_isatty() {
+		slog::Logger::root(slog_term::streamer()
+			                   .async()
+			                   .stderr()
+			                   .full()
+			                   .use_utc_timestamp()
+			                   .build()
+			                   .ignore_err(),
+		                   o![])
+	} else {
+		slog::Logger::root(slog_stream::stream(std::io::stderr(), slog_json::default()).fuse(),
+		                   o![])
+	};
 	slog_scope::set_global_logger(logger);
 }
 
@@ -157,19 +47,17 @@ fn main() {
 	info!["Logger initialized"];
 
 	let mut window = create_window();
-	let mut net = create_tilenet();
+	let net = create_tilenet();
 	let mut tile = create_tile();
 	let mut coller = Rects::new();
 	let mut rarer = Rare::new(60);
-	let mut gravity = 0.00981;
-	let mut hit_ground = false;
+	let gravity = 0.00981;
 
 	'main: loop {
 		if handle_events(&mut window) {
 			break 'main;
 		}
 
-		let mut uppressed = false;
 		let side_speed = 0.02;
 		let vert_speed = 0.186;
 		if Key::Left.is_pressed() {
@@ -261,7 +149,8 @@ fn create_tilenet() -> tile_net::TileNet<usize> {
 	(1..7)
 		.map(|x| {
 			*net.get_mut((x, 0)).unwrap() = Some(0);
-		}).count();
+		})
+		.count();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
 	net
 }
