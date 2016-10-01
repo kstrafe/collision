@@ -151,84 +151,10 @@ fn setup_logger() {
 	slog_scope::set_global_logger(logger);
 }
 
-fn coolfun() {
-	info!["This func is too cool!"];
-}
-
 fn main() {
 
 	setup_logger();
-	info!("Hello logger!"; "1" => "A value", "something" => "else");
-	slog_scope::scope(slog_scope::logger().new(o!["context" => "coolfun"]), coolfun);
-	return;
-
-	Line(Vector(0.0, 0.0), Vector(3.0, 3.0)).supercover()
-		.inspect(|x| println!("{:?}", x)).count();
-	// let mut r = thread_rng();
-	// for _ in 0..10 {
-	// let mut mat = vec![];
-	// for i in 0..(3200*1000)*(3) {
-	// mat.push(/*r.next_f64()*/ i as f64);
-	// }
-	//
-	//
-	// let begin = time::now();
-	// mat.sort_by(|a, b| a.partial_cmp(b).unwrap());
-	// let end = time::now();
-	// let diff = end - begin;
-	// println!("{:?}", diff);
-	// }
-	// return;
-	//
-
-	// Three types of messages
-	// cycle | Queue for next cycle using obj.send(...)
-	// direct | Call a method directly using Fn(x) -> (x)
-	// async | Queue to a thread using obj.send(...)
-
-	// cycle:
-	let mut fsm = fsm! {
-		audio: A,
-		some: B,
-		// video: login.logState, login.qListen;
-	};
-
-	fsm.some.setc(fsm.audio.create());
-	let (tx, rx) = channel();
-	fsm.some.setf(tx);
-
-	let begin = time::now();
-	loop {
-		fsm.cycle();
-		if let Ok(()) = rx.try_recv() {
-			break;
-		}
-	}
-	let end = time::now();
-
-	println!("{:?}", end - begin);
-	println!("{:?}", fsm.audio);
-
-	let mut rr: i32 = 0;
-	let begin = time::now();
-	for _ in 0..1000000 {
-		rr = rand::random();
-	}
-	let end = time::now();
-	println!("{:?}", end - begin);
-	println!("{:?}", rr);
-
-	// Ideally:
-	//
-	// let mut fsm = fsm! {
-	// ...
-	// };
-	//
-	// con!(fsm,
-	// audio control <=> interface,
-	// );
-	//
-	//
+	info!["Logger initialized"];
 
 	let mut window = create_window();
 	let mut net = create_tilenet();
@@ -242,7 +168,6 @@ fn main() {
 		if handle_events(&mut window) {
 			break 'main;
 		}
-
 
 		let mut uppressed = false;
 		let side_speed = 0.02;
@@ -327,6 +252,10 @@ fn create_tilenet() -> tile_net::TileNet<usize> {
 			*net.get_mut((7, x)).unwrap() = Some(0);
 		})
 		.count();
+	(1..7)
+		.map(|x| {
+			*net.get_mut((x, 0)).unwrap() = Some(0);
+		}).count();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
 	net
 }
@@ -335,7 +264,7 @@ fn create_block<'a>() -> RectangleShape<'a> {
 	let mut block = RectangleShape::new().unwrap();
 	block.set_size(&Vector2f::new(50.0, 50.0));
 	block.set_fill_color(&Color::new_rgb(0, 0, 0));
-	block.set_position2f(100.0, 0.0);
+	block.set_position2f(100.0, 400.0);
 	block
 }
 
@@ -373,7 +302,7 @@ impl Rects {
 	fn new() -> Rects {
 		Rects {
 			pts: vec![(0.0, 0.0), (0.5, 0.0), (0.0, 0.5), (0.5, 0.5)],
-			pos: Vector(1.0, 0.0),
+			pos: Vector(1.0, 1.0),
 			mov: Vector(0.0, 0.0),
 		}
 	}
