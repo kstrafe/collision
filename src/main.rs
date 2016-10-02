@@ -58,12 +58,12 @@ fn main() {
 			break 'main;
 		}
 
-		let side_speed = 0.02;
-		let vert_speed = 0.186;
-		if Key::Left.is_pressed() {
+		let side_speed = 0.04;
+		let vert_speed = 0.25;
+		if Key::A.is_pressed() {
 			coller.enqueue(Vector(-side_speed, 0.0));
 		}
-		if Key::Right.is_pressed() {
+		if Key::D.is_pressed() {
 			coller.enqueue(Vector(side_speed, 0.0));
 		}
 
@@ -74,23 +74,26 @@ fn main() {
 				.count();
 		});
 
+		let dy = coller.check_x();
 		loop {
 			let tiles = net.collide_set(coller.tiles());
 			if !coller.resolve(tiles) {
 				break;
 			}
 		}
+		coller.uncheck_x(dy);
 
-		if Key::Up.is_pressed() {
+		if Key::W.is_pressed() {
 			if coller.jmp {
-				coller.enqueue(Vector(0.0, -vert_speed));
+				coller.set_speed(Vector(0.0, -vert_speed));
 				coller.jmp = false;
 			}
 		}
-		if Key::Down.is_pressed() {
+		if Key::S.is_pressed() {
 			coller.enqueue(Vector(0.0, vert_speed));
 		}
 
+		rarer.run(|| info!["Current x speed"; "x" => coller.queued().1]);
 		coller.enqueue(Vector(0.0, gravity));
 		let mut any_col = false;
 		loop {
@@ -109,21 +112,11 @@ fn main() {
 			any_col = true;
 		}
 
-		info!["pos"; "pos" => format!["{:?}", coller.pos]];
-		let xs = coller.pos.0 as i32;
-		let ys = coller.pos.1 as i32;
-		let xe = xs + 5;
-		let ye = ys + 5;
-		let xs = if xs-5 < 0 { 0 } else { xs-5 };
-		let ys = if ys-5 < 0 { 0 } else { ys-5 };
-
-		let xe = xe as usize;
-		let ye = ye as usize;
-		let xs = xs as usize;
-		let ys = ys as usize;
+		rarer.run(|| info!["pos"; "pos" => format!["{:?}", coller.pos]]);
 
 		window.clear(&Color::new_rgb(200, 2, 3));
-		for i in net.view_box((xs, xe, ys, ye)) {
+
+		for i in net.view_all() {
 			if let (&Some(_), col, row) = i {
 				let col = col as f32;
 				let row = row as f32;
@@ -205,6 +198,7 @@ struct Rects {
 	pos: Vector,
 	mov: Vector,
 	jmp: bool,
+	checking_x: bool,
 }
 
 impl Rects {
@@ -214,7 +208,24 @@ impl Rects {
 			pos: Vector(1.0, 1.0),
 			mov: Vector(0.0, 0.0),
 			jmp: false,
+			checking_x: false,
 		}
+	}
+
+	fn check_x(&mut self) -> f32 {
+		self.checking_x = true;
+		let tmp = self.mov.1;
+		self.mov = Vector(self.mov.0, 0.0);
+		tmp
+	}
+
+	fn uncheck_x(&mut self, dy: f32) {
+		self.checking_x = false;
+		self.mov = Vector(self.mov.0, dy);
+	}
+
+	fn set_speed(&mut self, vec: Vector) {
+		self.mov = vec;
 	}
 
 	fn get_pos(&self) -> Vector {
@@ -246,7 +257,11 @@ impl Collable for Rects {
 			self.mov = Vector(0.0, mov.1);
 			false
 		} else if mov.norm2sq() > 1e-6 {
-			mov.scale(0.99);
+			if self.checking_x {
+				mov = Vector(mov.0 * 0.9, mov.1);
+			} else {
+				mov.scale(0.9);
+			}
 			self.mov = mov;
 			true
 		} else {
