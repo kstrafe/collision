@@ -43,6 +43,54 @@ fn setup_logger() {
 
 fn main() {
 
+	// implementing gjk, we need both vertices:
+	#[derive(Clone, Copy)]
+	struct Vec3(f32, f32, f32);
+	struct Polygon(Vec<Vec3>);
+
+	impl Vec3 {
+		fn dot(&self, right: &Vec3) -> f32 {
+			self.0*right.0+self.1*right.1+self.2*right.2
+		}
+	}
+
+	impl std::ops::Sub for Vec3 {
+		type Output = Vec3;
+
+		fn sub(self, other: Vec3) -> Self::Output {
+			Vec3(self.0 - other.0, self.1 - other.1, self.2 - other.2)
+		}
+	}
+
+	use std::ops::Neg;
+	impl<'a> std::ops::Neg for &'a Vec3 {
+		type Output = Vec3;
+
+		fn neg(self) -> Self::Output {
+			Vec3(0.0 - self.0, 0.0 - self.1, 0.0 - self.2)
+		}
+	}
+
+	fn farthest(a: Polygon, direction: &Vec3) -> Vec3 {
+		let mut iter_a = a.0.iter();
+		let mut curmax = iter_a.next().unwrap();
+		let mut amax = curmax.dot(direction);
+		for vector in iter_a {
+			let curdot = vector.dot(direction);
+			if curdot > amax {
+				amax = curdot;
+				curmax = vector;
+			}
+		}
+		*curmax
+	}
+
+	fn support(a: Polygon, b: Polygon, direction: &Vec3) -> Vec3 {
+		let far_a = farthest(a, direction);
+		let far_b = farthest(b, &-direction);
+		far_a - far_b
+	}
+
 	setup_logger();
 	info!["Logger initialized"];
 
