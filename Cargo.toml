@@ -8,6 +8,7 @@ acon = "0.5.1"
 isatty = "0.1"
 rand = "0.3.14"
 sfml = "0.11.2"
+PolyPoly = "0"
 slog = { path = "../slog-rs" }
 slog-json = { path = "../slog-rs/crates/json" }
 slog-scope = { path = "../slog-rs/crates/scope" }

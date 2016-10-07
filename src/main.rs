@@ -138,7 +138,7 @@ fn main() {
 			}
 		}
 		if Key::S.is_pressed() {
-			coller.enqueue(Vector(0.0, vert_speed));
+			coller.enqueue(Vector(0.0, vert_speed*100000.0));
 		}
 
 		rarer.run(|| info!["Current x speed"; "x" => coller.queued().1]);
@@ -192,6 +192,7 @@ fn create_window() -> RenderWindow {
 }
 
 fn create_tilenet() -> tile_net::TileNet<usize> {
+	//let mut net = tile_net::TileNet::new((1000, 1000));
 	let mut net = tile_net::TileNet::sample();
 	*net.get_mut((3, 2)).unwrap() = Some(0);
 	(0..6)
@@ -306,11 +307,17 @@ impl Collable for Rects {
 			false
 		} else if mov.norm2sq() > 1e-6 {
 			if self.checking_x {
-				mov = Vector(mov.0 * 0.9, mov.1);
+				mov = Vector(mov.0 * 0.999, mov.1);
+				self.mov = mov;
 			} else {
 				mov.scale(0.9);
+				let gravity = 0.00981;
+				if mov.norm2sq() > gravity {
+					self.mov = Vector(mov.0, -mov.1);
+				} else {
+					self.mov = mov;
+				}
 			}
-			self.mov = mov;
 			true
 		} else {
 			false
