@@ -50,7 +50,7 @@ fn main() {
 
 	impl Vec3 {
 		fn dot(&self, right: &Vec3) -> f32 {
-			self.0*right.0+self.1*right.1+self.2*right.2
+			self.0 * right.0 + self.1 * right.1 + self.2 * right.2
 		}
 	}
 
@@ -148,7 +148,7 @@ fn main() {
 			}
 		}
 		if Key::S.is_pressed() {
-			coller.enqueue(Vector(0.0, vert_speed*100000.0));
+			coller.enqueue(Vector(0.0, vert_speed * 100000.0));
 		}
 
 		rarer.run(|| info!["Current x speed"; "x" => coller.queued().1]);
