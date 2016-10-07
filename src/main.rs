@@ -230,23 +230,15 @@ fn create_window() -> RenderWindow {
 
 fn create_tilenet() -> tile_net::TileNet<usize> {
 	let mut net: TileNet<usize> = tile_net::TileNet::new((1000, 1000));
-	*net.get_mut((3, 2)).unwrap() = 1;
-	(0..1000)
-		.map(|x| {
-			*net.get_mut((0, x)).unwrap() = 1;
-			*net.get_mut((999, x)).unwrap() = 1;
-		})
-		.count();
-	(0..1000)
-		.map(|x| {
-			*net.get_mut((x, 0)).unwrap() = 1;
-			for i in 800..980 {
-				*net.get_mut((x, i)).unwrap() = 1;
-			}
-			*net.get_mut((x, 999)).unwrap() = 1;
-		})
-		.count();
-	*net.get_mut((3, 2)).unwrap() = 1;
+	net.draw_col(&1, 0);
+	net.draw_col(&1, 999);
+	net.draw_row(&1, 0);
+	net.draw_row(&1, 999);
+	net.draw_box(&1, (1, 970), (20, 990));
+	(0..20usize).inspect(|x| {
+		net.set(&1, (20+x, 998-x));
+		net.set(&1, (21+x, 998-x));
+	}).count();
 	net
 }
 
@@ -349,7 +341,6 @@ impl Collable<usize> for RectsWhite {
 				mov = Vector(mov.0 * 0.5, mov.1);
 				self.mov = mov;
 			} else {
-				mov.scale(0.5);
 				let gravity = 0.00981;
 				if mov.norm2sq() > gravity {
 					self.mov = Vector(mov.0, -mov.1);
