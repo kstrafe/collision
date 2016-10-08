@@ -11,16 +11,10 @@ extern crate slog_term;
 extern crate tile_net;
 extern crate time;
 
-use std::thread;
-use std::time::Duration;
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::collections::BTreeMap;
-
-use sfml::graphics::{CircleShape, Color, Font, RectangleShape, RenderTarget, RenderWindow, Shape,
-                     Text, Transformable, Drawable, RenderStates, View};
-use sfml::window::{ContextSettings, Key, VideoMode, event, window_style};
-use sfml::system::{Clock, Time, Vector2f};
-use sfml::audio::{Sound, SoundBuffer, SoundSource};
+use sfml::graphics::{Color, RectangleShape, RenderTarget, RenderWindow, Shape, Transformable,
+                     Drawable, RenderStates, View};
+use sfml::window::{Key, VideoMode, event, window_style};
+use sfml::system::Vector2f;
 use tile_net::*;
 use slog::DrainExt;
 
@@ -238,17 +232,13 @@ impl RectsWhite {
 		self.mov = vec;
 	}
 
-	fn get_pos(&self) -> Vector {
-		self.pos
-	}
-
 	fn enqueue(&mut self, vector: Vector) {
 		self.mov = self.mov + vector;
 	}
 }
 
 impl Collable<usize> for RectsWhite {
-	fn postsolve(&mut self, collided_once: bool, resolved: bool) {
+	fn postsolve(&mut self, collided_once: bool, _resolved: bool) {
 		if self.checking_x == false {
 			if collided_once {
 				self.jmp = true;
@@ -352,7 +342,7 @@ impl Rects {
 impl Collable<usize> for Rects {
 	fn presolve(&mut self) {}
 
-	fn postsolve(&mut self, collided_once: bool, resolved: bool) {
+	fn postsolve(&mut self, collided_once: bool, _resolved: bool) {
 		if self.checking_x == false {
 			if collided_once {
 				self.jmp = true;
@@ -385,7 +375,6 @@ impl Collable<usize> for Rects {
 				self.mov = mov;
 			} else {
 				mov.scale(0.6);
-				let gravity = 0.00981;
 				self.mov = mov;
 			}
 			false
