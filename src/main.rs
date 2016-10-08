@@ -203,6 +203,7 @@ struct RectsWhite {
 	mov: Vector,
 	jmp: bool,
 	checking_x: bool,
+	downward: bool,
 }
 
 impl RectsWhite {
@@ -213,6 +214,7 @@ impl RectsWhite {
 			mov: Vector(0.0, 0.0),
 			jmp: false,
 			checking_x: false,
+			downward: false,
 		}
 	}
 
@@ -238,9 +240,15 @@ impl RectsWhite {
 }
 
 impl Collable<usize> for RectsWhite {
+	fn presolve(&mut self) {
+		if self.checking_x == false {
+			self.downward = self.mov.1 > 1e-6;
+		}
+	}
+
 	fn postsolve(&mut self, collided_once: bool, _resolved: bool) {
 		if self.checking_x == false {
-			if collided_once {
+			if collided_once && self.downward {
 				self.jmp = true;
 			} else {
 				self.jmp = false;
@@ -301,6 +309,7 @@ struct Rects {
 	mov: Vector,
 	jmp: bool,
 	checking_x: bool,
+	downward: bool,
 }
 
 impl Rects {
@@ -311,6 +320,7 @@ impl Rects {
 			mov: Vector(0.0, 0.0),
 			jmp: false,
 			checking_x: false,
+			downward: false,
 		}
 	}
 
@@ -340,11 +350,15 @@ impl Rects {
 }
 
 impl Collable<usize> for Rects {
-	fn presolve(&mut self) {}
+	fn presolve(&mut self) {
+		if self.checking_x == false {
+			self.downward = self.mov.1 > 1e-6;
+		}
+	}
 
 	fn postsolve(&mut self, collided_once: bool, _resolved: bool) {
 		if self.checking_x == false {
-			if collided_once {
+			if collided_once && self.downward {
 				self.jmp = true;
 			} else {
 				self.jmp = false;
