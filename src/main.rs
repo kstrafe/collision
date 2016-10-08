@@ -107,13 +107,19 @@ fn main() {
 			break 'main;
 		}
 
-		let side_speed = 0.04;
-		let vert_speed = 0.25;
+		let side_speed = 0.4;
+		let vert_speed = 0.45;
 		if Key::A.is_pressed() {
 			coller.enqueue(Vector(-side_speed, 0.0));
 		}
 		if Key::D.is_pressed() {
 			coller.enqueue(Vector(side_speed, 0.0));
+		}
+		if Key::J.is_pressed() {
+			coller2.enqueue(Vector(-side_speed, 0.0));
+		}
+		if Key::L.is_pressed() {
+			coller2.enqueue(Vector(side_speed, 0.0));
 		}
 
 		rarer.run(|| println!("{:?}", coller));
@@ -149,6 +155,15 @@ fn main() {
 		}
 		if Key::S.is_pressed() {
 			coller.enqueue(Vector(0.0, vert_speed * 100000.0));
+		}
+		if Key::I.is_pressed() {
+			if coller2.jmp {
+				coller2.set_speed(Vector(0.0, -vert_speed));
+				coller2.jmp = false;
+			}
+		}
+		if Key::K.is_pressed() {
+			coller2.enqueue(Vector(0.0, vert_speed * 100000.0));
 		}
 
 		rarer.run(|| info!["Current x speed"; "x" => coller.queued().1]);
@@ -230,14 +245,17 @@ fn create_window() -> RenderWindow {
 
 fn create_tilenet() -> tile_net::TileNet<usize> {
 	let mut net: TileNet<usize> = tile_net::TileNet::new((1000, 1000));
-	net.draw_col(&1, 0);
-	net.draw_col(&1, 999);
-	net.draw_row(&1, 0);
-	net.draw_row(&1, 999);
-	net.draw_box(&1, (1, 970), (20, 990));
+	net.set_box(&0, (0, 0), (1000, 1000));
+	net.set_box(&1, (1, 1), (999, 999));
+	net.set_box(&0, (2, 2), (998, 998));
+	net.set_box(&1, (1, 970), (20, 990));
 	(0..20usize).inspect(|x| {
 		net.set(&1, (20+x, 998-x));
 		net.set(&1, (21+x, 998-x));
+	}).count();
+	(0..20usize).inspect(|x| {
+		net.set(&1, (20-x, 978-x));
+		net.set(&1, (21-x, 978-x));
 	}).count();
 	net
 }
@@ -285,7 +303,7 @@ struct RectsWhite {
 impl RectsWhite {
 	fn new() -> RectsWhite {
 		RectsWhite {
-			pts: vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)],
+			pts: vec![(0.0, 0.0), (0.99, 0.0), (0.0, 0.99), (0.99, 0.99)],
 			pos: Vector(2.0, 970.0),
 			mov: Vector(0.0, 0.0),
 			jmp: false,
@@ -312,15 +330,16 @@ impl RectsWhite {
 	fn get_pos(&self) -> Vector {
 		self.pos
 	}
+
+	fn enqueue(&mut self, vector: Vector) {
+		self.mov = self.mov + vector;
+	}
+
 }
 
 impl Collable<usize> for RectsWhite {
 	fn points<'a>(&'a self) -> Points<'a> {
 		Points::new(self.pos, &self.pts)
-	}
-
-	fn enqueue(&mut self, vector: Vector) {
-		self.mov = self.mov + vector;
 	}
 
 	fn queued(&self) -> Vector {
@@ -343,8 +362,9 @@ impl Collable<usize> for RectsWhite {
 			} else {
 				let gravity = 0.00981;
 				if mov.norm2sq() > gravity {
-					self.mov = Vector(mov.0, -mov.1);
+					self.mov = Vector(mov.0, -mov.1 * 0.7);
 				} else {
+					mov.scale(0.5);
 					self.mov = mov;
 				}
 			}
@@ -376,7 +396,7 @@ struct Rects {
 impl Rects {
 	fn new() -> Rects {
 		Rects {
-			pts: vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)],
+			pts: vec![(0.0, 0.0), (0.99, 0.0), (0.0, 0.99), (0.99, 0.99)],
 			pos: Vector(2.0, 990.0),
 			mov: Vector(0.0, 0.0),
 			jmp: false,
@@ -403,15 +423,16 @@ impl Rects {
 	fn get_pos(&self) -> Vector {
 		self.pos
 	}
+
+	fn enqueue(&mut self, vector: Vector) {
+		self.mov = self.mov + vector;
+	}
+
 }
 
 impl Collable<usize> for Rects {
 	fn points<'a>(&'a self) -> Points<'a> {
 		Points::new(self.pos, &self.pts)
-	}
-
-	fn enqueue(&mut self, vector: Vector) {
-		self.mov = self.mov + vector;
 	}
 
 	fn queued(&self) -> Vector {
