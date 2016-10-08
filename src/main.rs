@@ -43,54 +43,6 @@ fn setup_logger() {
 
 fn main() {
 
-	// implementing gjk, we need both vertices:
-	#[derive(Clone, Copy)]
-	struct Vec3(f32, f32, f32);
-	struct Polygon(Vec<Vec3>);
-
-	impl Vec3 {
-		fn dot(&self, right: &Vec3) -> f32 {
-			self.0 * right.0 + self.1 * right.1 + self.2 * right.2
-		}
-	}
-
-	impl std::ops::Sub for Vec3 {
-		type Output = Vec3;
-
-		fn sub(self, other: Vec3) -> Self::Output {
-			Vec3(self.0 - other.0, self.1 - other.1, self.2 - other.2)
-		}
-	}
-
-	use std::ops::Neg;
-	impl<'a> std::ops::Neg for &'a Vec3 {
-		type Output = Vec3;
-
-		fn neg(self) -> Self::Output {
-			Vec3(0.0 - self.0, 0.0 - self.1, 0.0 - self.2)
-		}
-	}
-
-	fn farthest(a: Polygon, direction: &Vec3) -> Vec3 {
-		let mut iter_a = a.0.iter();
-		let mut curmax = iter_a.next().unwrap();
-		let mut amax = curmax.dot(direction);
-		for vector in iter_a {
-			let curdot = vector.dot(direction);
-			if curdot > amax {
-				amax = curdot;
-				curmax = vector;
-			}
-		}
-		*curmax
-	}
-
-	fn support(a: Polygon, b: Polygon, direction: &Vec3) -> Vec3 {
-		let far_a = farthest(a, direction);
-		let far_b = farthest(b, &-direction);
-		far_a - far_b
-	}
-
 	setup_logger();
 	info!["Logger initialized"];
 
@@ -123,28 +75,15 @@ fn main() {
 		}
 
 		rarer.run(|| println!("{:?}", coller));
-		rarer.run(|| {
-			net.collide_set(coller.tiles())
-				.inspect(|x| info!("collides"; "col" => format!["{:?}", x]))
-				.count();
-		});
 
+		// This is technically plumbing. It would be better to do:
+		// coller.resolve_loop(&net);
 		let dy = coller.check_x();
-		loop {
-			let tiles = net.collide_set(coller.tiles());
-			if !coller.resolve(tiles) {
-				break;
-			}
-		}
+		coller.solve(&net);
 		coller.uncheck_x(dy);
 
 		let dy = coller2.check_x();
-		loop {
-			let tiles = net.collide_set(coller2.tiles());
-			if !coller2.resolve(tiles) {
-				break;
-			}
-		}
+		coller2.solve(&net);
 		coller2.uncheck_x(dy);
 
 		if Key::W.is_pressed() {
@@ -166,43 +105,11 @@ fn main() {
 			coller2.enqueue(Vector(0.0, vert_speed * 100000.0));
 		}
 
-		rarer.run(|| info!["Current x speed"; "x" => coller.queued().1]);
 		coller.enqueue(Vector(0.0, gravity));
-		let mut any_col = false;
-		loop {
-			let down_speed = coller.queued().1;
-			let if_break_jmp = down_speed > 1e-6;
-			let tiles = net.collide_set(coller.tiles());
-			if !coller.resolve(tiles) {
-				if any_col == false {
-					coller.jmp = false;
-				}
-				break;
-			}
-			if if_break_jmp {
-				coller.jmp = true;
-			}
-			any_col = true;
-		}
+		coller.solve(&net);
 
 		coller2.enqueue(Vector(0.0, gravity));
-		let mut any_col = false;
-		loop {
-			let down_speed = coller2.queued().1;
-			let if_break_jmp = down_speed > 1e-6;
-			let tiles = net.collide_set(coller2.tiles());
-			if !coller2.resolve(tiles) {
-				if any_col == false {
-					coller2.jmp = false;
-				}
-				break;
-			}
-			if if_break_jmp {
-				coller2.jmp = true;
-			}
-			any_col = true;
-		}
-		rarer.run(|| info!["pos"; "pos" => format!["{:?}", coller2.pos]]);
+		coller2.solve(&net);
 
 		window.clear(&Color::new_rgb(255, 255, 255));
 
@@ -341,6 +248,16 @@ impl RectsWhite {
 }
 
 impl Collable<usize> for RectsWhite {
+	fn postsolve(&mut self, collided_once: bool, resolved: bool) {
+		if self.checking_x == false {
+			if collided_once {
+				self.jmp = true;
+			} else {
+				self.jmp = false;
+			}
+		}
+	}
+
 	fn points<'a>(&'a self) -> Points<'a> {
 		Points::new(self.pos, &self.pts)
 	}
@@ -357,7 +274,7 @@ impl Collable<usize> for RectsWhite {
 		if set.all(|x| *x == 1) {
 			self.pos = self.pos + mov;
 			self.mov = Vector(0.0, mov.1);
-			false
+			true
 		} else if mov.norm2sq() > 1e-6 {
 			if self.checking_x {
 				mov = Vector(mov.0 * 0.5, mov.1);
@@ -371,9 +288,9 @@ impl Collable<usize> for RectsWhite {
 					self.mov = mov;
 				}
 			}
-			true
-		} else {
 			false
+		} else {
+			true
 		}
 	}
 }
@@ -433,6 +350,18 @@ impl Rects {
 }
 
 impl Collable<usize> for Rects {
+	fn presolve(&mut self) {}
+
+	fn postsolve(&mut self, collided_once: bool, resolved: bool) {
+		if self.checking_x == false {
+			if collided_once {
+				self.jmp = true;
+			} else {
+				self.jmp = false;
+			}
+		}
+	}
+
 	fn points<'a>(&'a self) -> Points<'a> {
 		Points::new(self.pos, &self.pts)
 	}
@@ -449,7 +378,7 @@ impl Collable<usize> for Rects {
 		if set.all(|x| *x == 0usize) {
 			self.pos = self.pos + mov;
 			self.mov = Vector(0.0, mov.1);
-			false
+			true
 		} else if mov.norm2sq() > 1e-6 {
 			if self.checking_x {
 				mov = Vector(mov.0 * 0.59, mov.1);
@@ -459,9 +388,9 @@ impl Collable<usize> for Rects {
 				let gravity = 0.00981;
 				self.mov = mov;
 			}
-			true
-		} else {
 			false
+		} else {
+			true
 		}
 	}
 }
