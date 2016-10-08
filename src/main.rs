@@ -1,3 +1,6 @@
+#![cfg_attr(feature = "dev", allow(unstable_features))]
+#![cfg_attr(feature = "dev", feature(plugin))]
+#![cfg_attr(feature = "dev", plugin(clippy))]
 extern crate isatty;
 extern crate rand;
 extern crate sfml;
@@ -70,53 +73,64 @@ fn main() {
 
 		rarer.run(|| println!("{:?}", coller));
 
-		// This is technically plumbing. It would be better to do:
-		// coller.resolve_loop(&net);
+		let oldxspeed = coller.queued();
 		let dy = coller.check_x();
 		coller.solve(&net);
 		coller.uncheck_x(dy);
+
+		let oldpos = coller.get_pos();
+
+		let old = coller.queued();
+		coller.set_speed(Vector(0.0, -1.001));
+		if coller.tried_up {
+			coller.solve(&net);
+		}
+		coller.set_speed(oldxspeed);
+
+		let dy = coller.check_x();
+		coller.solve(&net);
+		coller.uncheck_x(dy);
+
+		println!["collided_up {}, tried up {}", coller.collided_up, coller.tried_up];
+		if coller.tried_up {
+			coller.set_pos(oldpos);
+		}
 
 		let dy = coller2.check_x();
 		coller2.solve(&net);
 		coller2.uncheck_x(dy);
 
-		if Key::W.is_pressed() {
-			if coller.jmp {
-				coller.set_speed(Vector(0.0, -vert_speed));
-				coller.jmp = false;
-			}
+		if Key::W.is_pressed() && coller.jmp {
+			coller.set_speed(Vector(0.0, -vert_speed));
+			coller.jmp = false;
 		}
 		if Key::S.is_pressed() {
 			coller.enqueue(Vector(0.0, vert_speed * 100000.0));
 		}
-		if Key::I.is_pressed() {
-			if coller2.jmp {
-				coller2.set_speed(Vector(0.0, -vert_speed));
-				coller2.jmp = false;
-			}
+		if Key::I.is_pressed() && coller2.jmp {
+			coller2.set_speed(Vector(0.0, -vert_speed));
+			coller2.jmp = false;
 		}
 		if Key::K.is_pressed() {
 			coller2.enqueue(Vector(0.0, vert_speed * 100000.0));
 		}
 
+		coller.reset_dx();
 		coller.enqueue(Vector(0.0, gravity));
 		coller.solve(&net);
-
 		coller2.enqueue(Vector(0.0, gravity));
 		coller2.solve(&net);
 
 		window.clear(&Color::new_rgb(255, 255, 255));
 
-		let mut view = View::new().unwrap();
+		let mut view = View::new_init(&Vector2f::new(0.0, 0.0), &Vector2f::new(800.0, 600.0)).unwrap();
 
 		let pos = coller.get_pos();
-		let xbegin = pos.0 as usize;
-		let ybegin = pos.1 as usize;
 
 		view.set_center(&Vector2f::new(pos.0 * 10.0, pos.1 * 10.0));
 		window.set_view(&view);
 
-		for i in net.view_center((xbegin, ybegin), (120usize, 60usize)) {
+		for i in net.view_center_f32((pos.0, pos.1), (120usize, 60usize)) {
 			if let (&1, col, row) = i {
 				let col = col as f32;
 				let row = row as f32;
@@ -185,9 +199,8 @@ fn handle_events(window: &mut RenderWindow) -> bool {
 		match event {
 			event::Closed => return true,
 			event::KeyPressed { code, .. } => {
-				match code {
-					Key::Escape => return true,
-					_ => {}
+				if let Key::Escape = code {
+					return true;
 				}
 			}
 			_ => {}
@@ -241,13 +254,13 @@ impl RectsWhite {
 
 impl Collable<usize> for RectsWhite {
 	fn presolve(&mut self) {
-		if self.checking_x == false {
+		if !self.checking_x {
 			self.downward = self.mov.1 > 1e-6;
 		}
 	}
 
 	fn postsolve(&mut self, collided_once: bool, _resolved: bool) {
-		if self.checking_x == false {
+		if !self.checking_x {
 			if collided_once && self.downward {
 				self.jmp = true;
 			} else {
@@ -256,7 +269,7 @@ impl Collable<usize> for RectsWhite {
 		}
 	}
 
-	fn points<'a>(&'a self) -> Points<'a> {
+	fn points(&self) -> Points {
 		Points::new(self.pos, &self.pts)
 	}
 
@@ -264,7 +277,7 @@ impl Collable<usize> for RectsWhite {
 		self.mov
 	}
 
-	fn resolve<'a, I>(&mut self, mut set: TileSet<'a, usize, I>) -> bool
+	fn resolve<I>(&mut self, mut set: TileSet<usize, I>) -> bool
 		where I: Iterator<Item = (i32, i32)>
 	{
 		let mut mov = self.mov;
@@ -310,6 +323,8 @@ struct Rects {
 	jmp: bool,
 	checking_x: bool,
 	downward: bool,
+	tried_up: bool,
+	collided_up: bool,
 }
 
 impl Rects {
@@ -321,6 +336,8 @@ impl Rects {
 			jmp: false,
 			checking_x: false,
 			downward: false,
+			tried_up: false,
+			collided_up: false,
 		}
 	}
 
@@ -336,12 +353,20 @@ impl Rects {
 		self.mov = Vector(self.mov.0, dy);
 	}
 
+	fn reset_dx(&mut self) {
+		self.mov = Vector(0.0, self.mov.1);
+	}
+
 	fn set_speed(&mut self, vec: Vector) {
 		self.mov = vec;
 	}
 
 	fn get_pos(&self) -> Vector {
 		self.pos
+	}
+
+	fn set_pos(&mut self, vec: Vector) {
+		self.pos = vec;
 	}
 
 	fn enqueue(&mut self, vector: Vector) {
@@ -351,22 +376,30 @@ impl Rects {
 
 impl Collable<usize> for Rects {
 	fn presolve(&mut self) {
-		if self.checking_x == false {
+		if !self.checking_x {
 			self.downward = self.mov.1 > 1e-6;
+			self.collided_up = false;
+		} else {
+			self.tried_up = false;
 		}
 	}
 
 	fn postsolve(&mut self, collided_once: bool, _resolved: bool) {
-		if self.checking_x == false {
+		if !self.checking_x {
+			self.collided_up = collided_once;
 			if collided_once && self.downward {
 				self.jmp = true;
 			} else {
 				self.jmp = false;
 			}
+		} else {
+			if collided_once {
+				self.tried_up = true;
+			}
 		}
 	}
 
-	fn points<'a>(&'a self) -> Points<'a> {
+	fn points(&self) -> Points {
 		Points::new(self.pos, &self.pts)
 	}
 
@@ -374,7 +407,7 @@ impl Collable<usize> for Rects {
 		self.mov
 	}
 
-	fn resolve<'a, I>(&mut self, mut set: TileSet<'a, usize, I>) -> bool
+	fn resolve<I>(&mut self, mut set: TileSet<usize, I>) -> bool
 		where I: Iterator<Item = (i32, i32)>
 	{
 		let mut mov = self.mov;
