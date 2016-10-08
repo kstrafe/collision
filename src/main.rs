@@ -249,14 +249,18 @@ fn create_tilenet() -> tile_net::TileNet<usize> {
 	net.set_box(&1, (1, 1), (999, 999));
 	net.set_box(&0, (2, 2), (998, 998));
 	net.set_box(&1, (1, 970), (20, 990));
-	(0..20usize).inspect(|x| {
-		net.set(&1, (20+x, 998-x));
-		net.set(&1, (21+x, 998-x));
-	}).count();
-	(0..20usize).inspect(|x| {
-		net.set(&1, (20-x, 978-x));
-		net.set(&1, (21-x, 978-x));
-	}).count();
+	(0..20usize)
+		.inspect(|x| {
+			net.set(&1, (20 + x, 998 - x));
+			net.set(&1, (21 + x, 998 - x));
+		})
+		.count();
+	(0..20usize)
+		.inspect(|x| {
+			net.set(&1, (20 - x, 978 - x));
+			net.set(&1, (21 - x, 978 - x));
+		})
+		.count();
 	net
 }
 
@@ -334,7 +338,6 @@ impl RectsWhite {
 	fn enqueue(&mut self, vector: Vector) {
 		self.mov = self.mov + vector;
 	}
-
 }
 
 impl Collable<usize> for RectsWhite {
@@ -427,7 +430,6 @@ impl Rects {
 	fn enqueue(&mut self, vector: Vector) {
 		self.mov = self.mov + vector;
 	}
-
 }
 
 impl Collable<usize> for Rects {
