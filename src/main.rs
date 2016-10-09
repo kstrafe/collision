@@ -21,6 +21,8 @@ use sfml::system::Vector2f;
 use tile_net::*;
 use slog::DrainExt;
 
+use std::ops::{Neg, Sub};
+
 fn setup_logger() {
 	let logger = if isatty::stderr_isatty() {
 		slog::Logger::root(slog_term::streamer()
@@ -38,10 +40,177 @@ fn setup_logger() {
 	slog_scope::set_global_logger(logger);
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+struct Vec3(f32, f32, f32);
+impl Vec3 {
+	fn dot(&self, right: &Vec3) -> f32 {
+		self.0 * right.0 + self.1 * right.1 + self.2 * right.2
+	}
+}
+impl Sub for Vec3 {
+	type Output = Vec3;
+	fn sub(self, right: Vec3) -> Self::Output {
+		Vec3(self.0 - right.0, self.1 - right.1, self.2 - right.2)
+	}
+}
+impl Neg for Vec3 {
+	type Output = Vec3;
+	fn neg(self) -> Self::Output {
+		Vec3(-self.0, -self.1, -self.2)
+	}
+}
+
+fn farthest(vertices: &Vec<Vec3>, direction: &Vec3) -> Vec3 {
+	let mut max: Option<f32> = None;
+	let mut max_vertex = Vec3::default();
+	for vertex in vertices {
+		let current = vertex.dot(&direction);
+		if let Some(value) = max {
+			if current > value {
+				max = Some(current);
+				max_vertex = *vertex;
+			}
+		} else {
+			max = Some(current);
+			max_vertex = *vertex;
+		}
+	}
+	max_vertex
+}
+
+fn support(vertices_a: &Vec<Vec3>, vertices_b: &Vec<Vec3>, direction: &Vec3) -> Vec3 {
+	farthest(vertices_a, direction) - farthest(vertices_b, &-*direction)
+}
+
+/// The BGJK algorithm
+fn bgjk(hull1: &Vec<Vec3>, hull2: &Vec<Vec3>) -> bool {
+	let d = Vec3(1.0, 1.0, 1.0);
+	let (a, b, c) = (d, d, d);
+
+	let s = support(hull1, hull2, &Vec3(1.0, 0.0, 0.0));
+	let mut l = vec![s];
+	let mut d = -s;
+	loop {
+		let a = support(hull1, hull2, &d);
+		if a.dot(&d) < 0.0 {
+			return false;
+		}
+		l.push(a);
+		if simplex(&mut l, &mut d) {
+			return true;
+		}
+	}
+}
+
+fn cross(a: &Vec3, b: &Vec3) -> Vec3 {
+	Vec3(a.1 * b.2 - a.2 * b.1,
+	     a.0 * b.2 - a.2 * b.0,
+	     a.0 * b.1 - a.1 * b.0)
+}
+
+fn three_cross(a: &Vec3, b: &Vec3, c: &Vec3) -> Vec3 {
+	cross(&cross(a, b), c)
+}
+
+fn simplex(l: &mut Vec<Vec3>, direction: &mut Vec3) -> bool {
+	if l.len() == 2 {
+		// Line segment
+		let b = l[0];
+		let a = l[1];
+
+		if (b - a).dot(&-a) > 0.0 {
+			*direction = three_cross(&(b - a), &-a, &(b - a));
+			*l = vec![a, b];
+		} else {
+			*direction = -a;
+			*l = vec![a];
+		}
+	} else if l.len() == 3 {
+		// Triangle
+		let c = l[0];
+		let b = l[1];
+		let a = l[2];
+
+		let ao = &-a;
+		let ab = &(b - a);
+		let ac = &(c - a);
+		let abc = &cross(ab, ac);
+		let ab_abc = &cross(ab, abc);
+
+		if three_cross(ab, ac, ac).dot(ao) > 0.0 {
+			if ac.dot(ao) > 0.0 {
+				*direction = three_cross(ac, ao, ac);
+				*l = vec![a, c];
+				return false;
+			} else {
+				// STAR
+				if ab.dot(ao) > 0.0 {
+					*direction = three_cross(ab, ao, ab);
+					*l = vec![a, b];
+					return false;
+				} else {
+					*direction = *ao;
+					*l = vec![a];
+					return false;
+				}
+			}
+		} else {
+			if three_cross(ab, ab, ac).dot(ao) > 0.0 {
+				// STAR
+				if ab.dot(ao) > 0.0 {
+					*direction = three_cross(ab, ao, ab);
+					*l = vec![a, b];
+					return false;
+				} else {
+					*direction = *ao;
+					*l = vec![a];
+					return false;
+				}
+			} else {
+				if cross(ab, ac).dot(ao) > 0.0 {
+					*direction = cross(ab, ac);
+					*l = vec![a, b, c];
+					return false;
+				} else {
+					*direction = -cross(ab, ac);
+					*l = vec![a, c, b];
+					return false;
+				}
+			}
+		}
+	} else if l.len() == 4 {
+	}
+	false
+}
+
 fn main() {
 
 	setup_logger();
 	info!["Logger initialized"];
+
+	let cube1 = vec![Vec3(0.0, 0.0, 0.0),
+	                 Vec3(1.0, 0.0, 0.0),
+	                 Vec3(0.0, 1.0, 0.0),
+	                 Vec3(1.0, 1.0, 0.0),
+	                 Vec3(0.0, 0.0, 1.0),
+	                 Vec3(1.0, 0.0, 1.0),
+	                 Vec3(0.0, 1.0, 1.0),
+	                 Vec3(1.0, 1.0, 1.0)];
+	let cube2 = vec![Vec3(0.5, 0.0, 0.0),
+	                 Vec3(1.5, 0.0, 0.0),
+	                 Vec3(0.5, 1.0, 0.0),
+	                 Vec3(1.5, 1.0, 0.0),
+	                 Vec3(0.5, 0.0, 1.0),
+	                 Vec3(1.5, 0.0, 1.0),
+	                 Vec3(0.5, 1.0, 1.0),
+	                 Vec3(1.5, 1.0, 1.0)];
+
+	let direction = Vec3(0.0, 0.5, 0.0);
+	info!["Got max in direction"; "direction" => format!["{:?}", direction],
+		"vertex" => format!["{:?}", farthest(&cube1, &direction)]];
+
+
+	return;
 
 	let mut window = create_window();
 	let net = create_tilenet();
