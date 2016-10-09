@@ -149,10 +149,8 @@ fn simplex(ap: &mut Vec3,
 		}
 		3 => {
 			macro_rules! check_tetrahedron {
-				() => {
-					check_tetra(ap, bp, cp, dp, sp, w, ao, ab, ac, abc);
-				};
-			}
+				() => { check_tetra(Tetra(ap, bp, cp, dp), sp, w, ao, ab, ac, abc); };
+			};
 			if abc.dot(ao) > 0.0 {
 				check_tetrahedron![];;
 				return false;
@@ -185,34 +183,27 @@ fn simplex(ap: &mut Vec3,
 	false
 }
 
-fn check_tetra(ap: &mut Vec3,
-               bp: &mut Vec3,
-               cp: &mut Vec3,
-               dp: &mut Vec3,
-               sp: &mut Vec3,
-               w: &mut i32,
-               ao: Vec3,
-               ab: Vec3,
-               ac: Vec3,
-               abc: Vec3) {
+struct Tetra<'a>(&'a mut Vec3, &'a mut Vec3, &'a mut Vec3, &'a mut Vec3);
+
+fn check_tetra(te: Tetra, sp: &mut Vec3, w: &mut i32, ao: Vec3, ab: Vec3, ac: Vec3, abc: Vec3) {
 	let ab_abc = cross(ab, abc);
 	if ab_abc.dot(ao) > 0.0 {
-		*cp = *bp;
-		*bp = *ap;
+		*te.2 = *te.1;
+		*te.1 = *te.0;
 		*sp = dcross3(ab, ao);
 		*w = 2;
 		return;
 	}
 	let acp = cross(abc, ac);
 	if acp.dot(ao) > 0.0 {
-		*bp = *ap;
+		*te.1 = *te.0;
 		*sp = dcross3(ac, ao);
 		*w = 2;
 		return;
 	}
-	*dp = *cp;
-	*cp = *bp;
-	*bp = *ap;
+	*te.3 = *te.2;
+	*te.2 = *te.1;
+	*te.1 = *te.0;
 	*sp = abc;
 	*w = 3;
 	return;
@@ -246,7 +237,7 @@ fn main() {
 	                 Vec3(0.0, 1.0, 1.0),
 	                 Vec3(1.0, 1.0, 1.0)];
 
-	let cube2 = vec![Vec3(1.0001, 0.0, 0.0),
+	let cube2 = vec![Vec3(1., 0.0, 0.0),
 	                 Vec3(2.5, 0.0, 0.0),
 	                 Vec3(1.5, 1.0, 0.0),
 	                 Vec3(2.5, 1.0, 0.0),
