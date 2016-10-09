@@ -60,7 +60,7 @@ impl Neg for Vec3 {
 	}
 }
 
-fn farthest(vertices: &Vec<Vec3>, direction: Vec3) -> Vec3 {
+fn farthest(vertices: &[Vec3], direction: Vec3) -> Vec3 {
 	let mut max: Option<f32> = None;
 	let mut max_vertex = Vec3::default();
 	for vertex in vertices {
@@ -78,77 +78,71 @@ fn farthest(vertices: &Vec<Vec3>, direction: Vec3) -> Vec3 {
 	max_vertex
 }
 
-fn support(vertices_a: &Vec<Vec3>, vertices_b: &Vec<Vec3>, direction: Vec3) -> Vec3 {
+fn support(vertices_a: &[Vec3], vertices_b: &[Vec3], direction: Vec3) -> Vec3 {
 	farthest(vertices_a, direction) - farthest(vertices_b, -direction)
 }
 
 /// The BGJK algorithm
-fn bgjk(hull1: &Vec<Vec3>, hull2: &Vec<Vec3>) -> bool {
-	let mut s = Vec3(1.0, 1.0, 1.0);
-	let mut d = Vec3::default();
-	let (mut a, mut b, mut c) = (d, d, d);
+fn bgjk(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
+	let mut sp = Vec3(1.0, 1.0, 1.0);
+	let mut dp = Vec3::default();
+	let (mut ap, mut bp, mut cp);
 
-	c = support(hull1, hull2, s);
-	s = -c;
-	b = support(hull1, hull2, s);
-	if b.dot(s) < 0.0 {
+	cp = support(hull1, hull2, sp);
+	sp = -cp;
+	bp = support(hull1, hull2, sp);
+	if bp.dot(sp) < 0.0 {
 		return false;
 	}
-	s = dcross3(c - b, -b);
+	sp = dcross3(cp - bp, -bp);
 	let mut w = 2;
 
-	let mut count = 0;
 	loop {
-		info!["Loop enter"; "count" => count];
-		count += 1;
-		a = support(hull1, hull2, s);
-		if a.dot(s) < 0.0 {
+		ap = support(hull1, hull2, sp);
+		if ap.dot(sp) < 0.0 {
 			return false;
-		} else if simplex(&mut a, &mut b, &mut c, &mut d, &mut s, &mut w) {
+		} else if simplex(&mut ap, &mut bp, &mut cp, &mut dp, &mut sp, &mut w) {
 			return true;
-		}
-		if count > 30 {
-			return false;
 		}
 	}
 }
 
-fn simplex(a: &mut Vec3,
-           b: &mut Vec3,
-           c: &mut Vec3,
-           d: &mut Vec3,
-           s: &mut Vec3,
+fn simplex(ap: &mut Vec3,
+           bp: &mut Vec3,
+           cp: &mut Vec3,
+           dp: &mut Vec3,
+           sp: &mut Vec3,
            w: &mut i32)
            -> bool {
-	let ao = -*a;
-	let mut ab = *b - *a;
-	let mut ac = *c - *a;
+	let ao = -*ap;
+	let mut ab = *bp - *ap;
+	let mut ac = *cp - *ap;
 	let mut abc = cross(ab, ac);
 	match *w {
 		2 => {
 			let ab_abc = cross(ab, abc);
 
 			if ab_abc.dot(ao) > 0.0 {
-				*c = *b;
-				*b = *a;
-				*s = dcross3(ab, ao);
+				*cp = *bp;
+				*bp = *ap;
+				*sp = dcross3(ab, ao);
 				return false;
 			}
 			let abc_ac = cross(abc, ac);
 			if abc_ac.dot(ao) > 0.0 {
-				*b = *a;
-				*s = dcross3(ac, ao);
+				*bp = *ap;
+				*sp = dcross3(ac, ao);
 				return false;
 			}
 			if abc.dot(ao) > 0.0 {
-				*d = *c;
-				*c = *b;
-				*b = *a;
-				*s = abc;
+				*dp = *cp;
+				*cp = *bp;
+				*bp = *ap;
+				*sp = abc;
 			} else {
-				*d = *b;
-				*b = *a;
-				*s = -abc;
+				*dp = *bp;
+				*bp = *ap;
+				*sp = -abc;
 			}
 			*w = 3;
 			return false;
@@ -156,18 +150,18 @@ fn simplex(a: &mut Vec3,
 		3 => {
 			macro_rules! check_tetrahedron {
 				() => {
-					check_tetra(a, b, c, d, s, w, ao, ab, ac, abc);
+					check_tetra(ap, bp, cp, dp, sp, w, ao, ab, ac, abc);
 				};
 			}
 			if abc.dot(ao) > 0.0 {
 				check_tetrahedron![];;
 				return false;
 			}
-			let ad = *d - *a;
+			let ad = *dp - *ap;
 			let acd = cross(ac, ad);
 			if acd.dot(ao) > 0.0 {
-				*b = *c;
-				*c = *d;
+				*bp = *cp;
+				*cp = *dp;
 				ab = ac;
 				ac = ad;
 				abc = acd;
@@ -176,8 +170,8 @@ fn simplex(a: &mut Vec3,
 			}
 			let adb = cross(ad, ab);
 			if adb.dot(ao) > 0.0 {
-				*c = *b;
-				*b = *d;
+				*cp = *bp;
+				*bp = *dp;
 				ac = ab;
 				ab = ad;
 				abc = adb;
@@ -191,11 +185,11 @@ fn simplex(a: &mut Vec3,
 	false
 }
 
-fn check_tetra(a: &mut Vec3,
-               b: &mut Vec3,
-               c: &mut Vec3,
-               d: &mut Vec3,
-               s: &mut Vec3,
+fn check_tetra(ap: &mut Vec3,
+               bp: &mut Vec3,
+               cp: &mut Vec3,
+               dp: &mut Vec3,
+               sp: &mut Vec3,
                w: &mut i32,
                ao: Vec3,
                ab: Vec3,
@@ -203,23 +197,23 @@ fn check_tetra(a: &mut Vec3,
                abc: Vec3) {
 	let ab_abc = cross(ab, abc);
 	if ab_abc.dot(ao) > 0.0 {
-		*c = *b;
-		*b = *a;
-		*s = dcross3(ab, ao);
+		*cp = *bp;
+		*bp = *ap;
+		*sp = dcross3(ab, ao);
 		*w = 2;
 		return;
 	}
 	let acp = cross(abc, ac);
 	if acp.dot(ao) > 0.0 {
-		*b = *a;
-		*s = dcross3(ac, ao);
+		*bp = *ap;
+		*sp = dcross3(ac, ao);
 		*w = 2;
 		return;
 	}
-	*d = *c;
-	*c = *b;
-	*b = *a;
-	*s = abc;
+	*dp = *cp;
+	*cp = *bp;
+	*bp = *ap;
+	*sp = abc;
 	*w = 3;
 	return;
 }
@@ -252,7 +246,7 @@ fn main() {
 	                 Vec3(0.0, 1.0, 1.0),
 	                 Vec3(1.0, 1.0, 1.0)];
 
-	let cube2 = vec![Vec3(1.1, 0.0, 0.0),
+	let cube2 = vec![Vec3(1.0001, 0.0, 0.0),
 	                 Vec3(2.5, 0.0, 0.0),
 	                 Vec3(1.5, 1.0, 0.0),
 	                 Vec3(2.5, 1.0, 0.0),
