@@ -73,6 +73,13 @@ fn main() {
 
 		rarer.run(|| println!("{:?}", coller));
 
+		// This is a little messy. What can we do?
+		// Try x movement.
+		// If the movement has a collision:
+		//   Move up 1
+		//   If not possible, return
+		//   Try to move x again
+		//   If not possible, return
 		let oldxspeed = coller.queued();
 		let dy = coller.check_x();
 		coller.solve(&net);
@@ -80,7 +87,6 @@ fn main() {
 
 		let oldpos = coller.get_pos();
 
-		let old = coller.queued();
 		coller.set_speed(Vector(0.0, -1.001));
 		if coller.tried_up {
 			coller.solve(&net);
@@ -91,7 +97,6 @@ fn main() {
 		coller.solve(&net);
 		coller.uncheck_x(dy);
 
-		println!["collided_up {}, tried up {}", coller.collided_up, coller.tried_up];
 		if coller.tried_up {
 			coller.set_pos(oldpos);
 		}
@@ -123,14 +128,15 @@ fn main() {
 
 		window.clear(&Color::new_rgb(255, 255, 255));
 
-		let mut view = View::new_init(&Vector2f::new(0.0, 0.0), &Vector2f::new(800.0, 600.0)).unwrap();
+		let mut view = View::new_init(&Vector2f::new(0.0, 0.0), &Vector2f::new(800.0, 600.0))
+			.unwrap();
 
 		let pos = coller.get_pos();
 
 		view.set_center(&Vector2f::new(pos.0 * 10.0, pos.1 * 10.0));
 		window.set_view(&view);
 
-		for i in net.view_center_f32((pos.0, pos.1), (120usize, 60usize)) {
+		for i in net.view_center_f32((pos.0, pos.1), (41usize, 30usize)) {
 			if let (&1, col, row) = i {
 				let col = col as f32;
 				let row = row as f32;
@@ -222,7 +228,7 @@ struct RectsWhite {
 impl RectsWhite {
 	fn new() -> RectsWhite {
 		RectsWhite {
-			pts: vec![(0.0, 0.0), (0.99, 0.0), (0.0, 0.99), (0.99, 0.99)],
+			pts: vec![(0.001, 0.001), (1.0, 0.001), (0.001, 1.0), (1.0, 1.0)],
 			pos: Vector(2.0, 970.0),
 			mov: Vector(0.0, 0.0),
 			jmp: false,
@@ -330,7 +336,7 @@ struct Rects {
 impl Rects {
 	fn new() -> Rects {
 		Rects {
-			pts: vec![(0.0, 0.0), (0.99, 0.0), (0.0, 0.99), (0.99, 0.99)],
+			pts: vec![(0.001, 0.001), (1.0, 0.001), (0.001, 1.0), (1.0, 1.0)],
 			pos: Vector(2.0, 990.0),
 			mov: Vector(0.0, 0.0),
 			jmp: false,
@@ -392,10 +398,8 @@ impl Collable<usize> for Rects {
 			} else {
 				self.jmp = false;
 			}
-		} else {
-			if collided_once {
-				self.tried_up = true;
-			}
+		} else if collided_once {
+			self.tried_up = true;
 		}
 	}
 
