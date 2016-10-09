@@ -121,31 +121,30 @@ fn simplex(ap: &mut Vec3,
 	match *w {
 		2 => {
 			let ab_abc = cross(ab, abc);
-
 			if ab_abc.dot(ao) > 0.0 {
 				*cp = *bp;
 				*bp = *ap;
 				*sp = dcross3(ab, ao);
-				return false;
-			}
-			let abc_ac = cross(abc, ac);
-			if abc_ac.dot(ao) > 0.0 {
-				*bp = *ap;
-				*sp = dcross3(ac, ao);
-				return false;
-			}
-			if abc.dot(ao) > 0.0 {
-				*dp = *cp;
-				*cp = *bp;
-				*bp = *ap;
-				*sp = abc;
 			} else {
-				*dp = *bp;
-				*bp = *ap;
-				*sp = -abc;
+				let abc_ac = cross(abc, ac);
+				if abc_ac.dot(ao) > 0.0 {
+					*bp = *ap;
+					*sp = dcross3(ac, ao);
+				} else {
+					if abc.dot(ao) > 0.0 {
+						*dp = *cp;
+						*cp = *bp;
+						*bp = *ap;
+						*sp = abc;
+					} else {
+						*dp = *bp;
+						*bp = *ap;
+						*sp = -abc;
+					}
+					*w = 3;
+				}
 			}
-			*w = 3;
-			return false;
+			false
 		}
 		3 => {
 			macro_rules! check_tetrahedron {
@@ -153,34 +152,36 @@ fn simplex(ap: &mut Vec3,
 			};
 			if abc.dot(ao) > 0.0 {
 				check_tetrahedron![];;
-				return false;
+				false
+			} else {
+				let ad = *dp - *ap;
+				let acd = cross(ac, ad);
+				if acd.dot(ao) > 0.0 {
+					*bp = *cp;
+					*cp = *dp;
+					ab = ac;
+					ac = ad;
+					abc = acd;
+					check_tetrahedron![];;
+					false
+				} else {
+					let adb = cross(ad, ab);
+					if adb.dot(ao) > 0.0 {
+						*cp = *bp;
+						*bp = *dp;
+						ac = ab;
+						ab = ad;
+						abc = adb;
+						check_tetrahedron![];;
+						false
+					} else {
+						true
+					}
+				}
 			}
-			let ad = *dp - *ap;
-			let acd = cross(ac, ad);
-			if acd.dot(ao) > 0.0 {
-				*bp = *cp;
-				*cp = *dp;
-				ab = ac;
-				ac = ad;
-				abc = acd;
-				check_tetrahedron![];;
-				return false;
-			}
-			let adb = cross(ad, ab);
-			if adb.dot(ao) > 0.0 {
-				*cp = *bp;
-				*bp = *dp;
-				ac = ab;
-				ab = ad;
-				abc = adb;
-				check_tetrahedron![];;
-				return false;
-			}
-			return true;
 		}
-		_ => {}
+		_ => false,
 	}
-	false
 }
 
 struct Tetra<'a>(&'a mut Vec3, &'a mut Vec3, &'a mut Vec3, &'a mut Vec3);
@@ -192,21 +193,20 @@ fn check_tetra(te: Tetra, sp: &mut Vec3, w: &mut i32, ao: Vec3, ab: Vec3, ac: Ve
 		*te.1 = *te.0;
 		*sp = dcross3(ab, ao);
 		*w = 2;
-		return;
+	} else {
+		let acp = cross(abc, ac);
+		if acp.dot(ao) > 0.0 {
+			*te.1 = *te.0;
+			*sp = dcross3(ac, ao);
+			*w = 2;
+		} else {
+			*te.3 = *te.2;
+			*te.2 = *te.1;
+			*te.1 = *te.0;
+			*sp = abc;
+			*w = 3;
+		}
 	}
-	let acp = cross(abc, ac);
-	if acp.dot(ao) > 0.0 {
-		*te.1 = *te.0;
-		*sp = dcross3(ac, ao);
-		*w = 2;
-		return;
-	}
-	*te.3 = *te.2;
-	*te.2 = *te.1;
-	*te.1 = *te.0;
-	*sp = abc;
-	*w = 3;
-	return;
 }
 
 fn cross(a: Vec3, b: Vec3) -> Vec3 {
@@ -237,7 +237,7 @@ fn main() {
 	                 Vec3(0.0, 1.0, 1.0),
 	                 Vec3(1.0, 1.0, 1.0)];
 
-	let cube2 = vec![Vec3(1., 0.0, 0.0),
+	let cube2 = vec![Vec3(1.01, 0.0, 0.0),
 	                 Vec3(2.5, 0.0, 0.0),
 	                 Vec3(1.5, 1.0, 0.0),
 	                 Vec3(2.5, 1.0, 0.0),
