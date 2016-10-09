@@ -43,7 +43,7 @@ fn setup_logger() {
 #[derive(Clone, Copy, Debug, Default)]
 struct Vec3(f32, f32, f32);
 impl Vec3 {
-	fn dot(&self, right: &Vec3) -> f32 {
+	fn dot(&self, right: Vec3) -> f32 {
 		self.0 * right.0 + self.1 * right.1 + self.2 * right.2
 	}
 }
@@ -60,11 +60,11 @@ impl Neg for Vec3 {
 	}
 }
 
-fn farthest(vertices: &Vec<Vec3>, direction: &Vec3) -> Vec3 {
+fn farthest(vertices: &Vec<Vec3>, direction: Vec3) -> Vec3 {
 	let mut max: Option<f32> = None;
 	let mut max_vertex = Vec3::default();
 	for vertex in vertices {
-		let current = vertex.dot(&direction);
+		let current = vertex.dot(direction);
 		if let Some(value) = max {
 			if current > value {
 				max = Some(current);
@@ -78,109 +78,164 @@ fn farthest(vertices: &Vec<Vec3>, direction: &Vec3) -> Vec3 {
 	max_vertex
 }
 
-fn support(vertices_a: &Vec<Vec3>, vertices_b: &Vec<Vec3>, direction: &Vec3) -> Vec3 {
-	farthest(vertices_a, direction) - farthest(vertices_b, &-*direction)
+fn support(vertices_a: &Vec<Vec3>, vertices_b: &Vec<Vec3>, direction: Vec3) -> Vec3 {
+	farthest(vertices_a, direction) - farthest(vertices_b, -direction)
 }
 
 /// The BGJK algorithm
 fn bgjk(hull1: &Vec<Vec3>, hull2: &Vec<Vec3>) -> bool {
-	let d = Vec3(1.0, 1.0, 1.0);
-	let (a, b, c) = (d, d, d);
+	let mut s = Vec3(1.0, 1.0, 1.0);
+	let mut d = Vec3::default();
+	let (mut a, mut b, mut c) = (d, d, d);
 
-	let s = support(hull1, hull2, &Vec3(1.0, 0.0, 0.0));
-	let mut l = vec![s];
-	let mut d = -s;
+	c = support(hull1, hull2, s);
+	s = -c;
+	b = support(hull1, hull2, s);
+	if b.dot(s) < 0.0 {
+		return false;
+	}
+	s = dcross3(c - b, -b);
+	let mut w = 2;
+
+	let mut count = 0;
 	loop {
-		let a = support(hull1, hull2, &d);
-		if a.dot(&d) < 0.0 {
+		info!["Loop enter"; "count" => count];
+		count += 1;
+		a = support(hull1, hull2, s);
+		if a.dot(s) < 0.0 {
 			return false;
-		}
-		l.push(a);
-		if simplex(&mut l, &mut d) {
+		} else if simplex(&mut a, &mut b, &mut c, &mut d, &mut s, &mut w) {
 			return true;
+		}
+		if count > 30 {
+			return false;
 		}
 	}
 }
 
-fn cross(a: &Vec3, b: &Vec3) -> Vec3 {
+fn simplex(a: &mut Vec3,
+           b: &mut Vec3,
+           c: &mut Vec3,
+           d: &mut Vec3,
+           s: &mut Vec3,
+           w: &mut i32)
+           -> bool {
+	let ao = -*a;
+	let mut ab = *b - *a;
+	let mut ac = *c - *a;
+	let mut abc = cross(ab, ac);
+	match *w {
+		2 => {
+			let ab_abc = cross(ab, abc);
+
+			if ab_abc.dot(ao) > 0.0 {
+				*c = *b;
+				*b = *a;
+				*s = dcross3(ab, ao);
+				return false;
+			}
+			let abc_ac = cross(abc, ac);
+			if abc_ac.dot(ao) > 0.0 {
+				*b = *a;
+				*s = dcross3(ac, ao);
+				return false;
+			}
+			if abc.dot(ao) > 0.0 {
+				*d = *c;
+				*c = *b;
+				*b = *a;
+				*s = abc;
+			} else {
+				*d = *b;
+				*b = *a;
+				*s = -abc;
+			}
+			*w = 3;
+			return false;
+		}
+		3 => {
+			macro_rules! check_tetrahedron {
+				() => {
+					check_tetra(a, b, c, d, s, w, ao, ab, ac, abc);
+				};
+			}
+			if abc.dot(ao) > 0.0 {
+				check_tetrahedron![];;
+				return false;
+			}
+			let ad = *d - *a;
+			let acd = cross(ac, ad);
+			if acd.dot(ao) > 0.0 {
+				*b = *c;
+				*c = *d;
+				ab = ac;
+				ac = ad;
+				abc = acd;
+				check_tetrahedron![];;
+				return false;
+			}
+			let adb = cross(ad, ab);
+			if adb.dot(ao) > 0.0 {
+				*c = *b;
+				*b = *d;
+				ac = ab;
+				ab = ad;
+				abc = adb;
+				check_tetrahedron![];;
+				return false;
+			}
+			return true;
+		}
+		_ => {}
+	}
+	false
+}
+
+fn check_tetra(a: &mut Vec3,
+               b: &mut Vec3,
+               c: &mut Vec3,
+               d: &mut Vec3,
+               s: &mut Vec3,
+               w: &mut i32,
+               ao: Vec3,
+               ab: Vec3,
+               ac: Vec3,
+               abc: Vec3) {
+	let ab_abc = cross(ab, abc);
+	if ab_abc.dot(ao) > 0.0 {
+		*c = *b;
+		*b = *a;
+		*s = dcross3(ab, ao);
+		*w = 2;
+		return;
+	}
+	let acp = cross(abc, ac);
+	if acp.dot(ao) > 0.0 {
+		*b = *a;
+		*s = dcross3(ac, ao);
+		*w = 2;
+		return;
+	}
+	*d = *c;
+	*c = *b;
+	*b = *a;
+	*s = abc;
+	*w = 3;
+	return;
+}
+
+fn cross(a: Vec3, b: Vec3) -> Vec3 {
 	Vec3(a.1 * b.2 - a.2 * b.1,
-	     a.0 * b.2 - a.2 * b.0,
+	     a.2 * b.0 - a.0 * b.2,
 	     a.0 * b.1 - a.1 * b.0)
 }
 
-fn three_cross(a: &Vec3, b: &Vec3, c: &Vec3) -> Vec3 {
-	cross(&cross(a, b), c)
+fn cross3(a: Vec3, b: Vec3, c: Vec3) -> Vec3 {
+	cross(cross(a, b), c)
 }
 
-fn simplex(l: &mut Vec<Vec3>, direction: &mut Vec3) -> bool {
-	if l.len() == 2 {
-		// Line segment
-		let b = l[0];
-		let a = l[1];
-
-		if (b - a).dot(&-a) > 0.0 {
-			*direction = three_cross(&(b - a), &-a, &(b - a));
-			*l = vec![a, b];
-		} else {
-			*direction = -a;
-			*l = vec![a];
-		}
-	} else if l.len() == 3 {
-		// Triangle
-		let c = l[0];
-		let b = l[1];
-		let a = l[2];
-
-		let ao = &-a;
-		let ab = &(b - a);
-		let ac = &(c - a);
-		let abc = &cross(ab, ac);
-		let ab_abc = &cross(ab, abc);
-
-		if three_cross(ab, ac, ac).dot(ao) > 0.0 {
-			if ac.dot(ao) > 0.0 {
-				*direction = three_cross(ac, ao, ac);
-				*l = vec![a, c];
-				return false;
-			} else {
-				// STAR
-				if ab.dot(ao) > 0.0 {
-					*direction = three_cross(ab, ao, ab);
-					*l = vec![a, b];
-					return false;
-				} else {
-					*direction = *ao;
-					*l = vec![a];
-					return false;
-				}
-			}
-		} else {
-			if three_cross(ab, ab, ac).dot(ao) > 0.0 {
-				// STAR
-				if ab.dot(ao) > 0.0 {
-					*direction = three_cross(ab, ao, ab);
-					*l = vec![a, b];
-					return false;
-				} else {
-					*direction = *ao;
-					*l = vec![a];
-					return false;
-				}
-			} else {
-				if cross(ab, ac).dot(ao) > 0.0 {
-					*direction = cross(ab, ac);
-					*l = vec![a, b, c];
-					return false;
-				} else {
-					*direction = -cross(ab, ac);
-					*l = vec![a, c, b];
-					return false;
-				}
-			}
-		}
-	} else if l.len() == 4 {
-	}
-	false
+fn dcross3(a: Vec3, b: Vec3) -> Vec3 {
+	cross3(a, b, a)
 }
 
 fn main() {
@@ -196,19 +251,17 @@ fn main() {
 	                 Vec3(1.0, 0.0, 1.0),
 	                 Vec3(0.0, 1.0, 1.0),
 	                 Vec3(1.0, 1.0, 1.0)];
-	let cube2 = vec![Vec3(0.5, 0.0, 0.0),
-	                 Vec3(1.5, 0.0, 0.0),
-	                 Vec3(0.5, 1.0, 0.0),
+
+	let cube2 = vec![Vec3(1.1, 0.0, 0.0),
+	                 Vec3(2.5, 0.0, 0.0),
 	                 Vec3(1.5, 1.0, 0.0),
-	                 Vec3(0.5, 0.0, 1.0),
+	                 Vec3(2.5, 1.0, 0.0),
 	                 Vec3(1.5, 0.0, 1.0),
-	                 Vec3(0.5, 1.0, 1.0),
-	                 Vec3(1.5, 1.0, 1.0)];
+	                 Vec3(2.5, 0.0, 1.0),
+	                 Vec3(1.5, 1.0, 1.0),
+	                 Vec3(2.5, 1.0, 1.0)];
 
-	let direction = Vec3(0.0, 0.5, 0.0);
-	info!["Got max in direction"; "direction" => format!["{:?}", direction],
-		"vertex" => format!["{:?}", farthest(&cube1, &direction)]];
-
+	info!["Collision"; "status" => bgjk(&cube1, &cube2)];
 
 	return;
 
