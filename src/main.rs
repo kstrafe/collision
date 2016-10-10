@@ -83,6 +83,15 @@ fn support(vertices_a: &[Vec3], vertices_b: &[Vec3], direction: Vec3) -> Vec3 {
 }
 
 /// The BGJK algorithm
+///
+/// The Boolean-GJK algorithm gives us the answer to the question:
+/// "do these convex hulls intersect?"
+/// This algorithm takes two hulls. The ordering of the points is not
+/// important. All points are assumed to be on the surface of the hull.
+/// Having interior points should not affect the qualitative result of
+/// the algorithm, but may cause slight (very minor) degradation in
+/// performance. The algorithm is O(n+m), where n and m are the amount
+/// of points in hull1 and hull2 respectively.
 fn bgjk(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
 	let mut sp = Vec3(1.0, 1.0, 1.0);
 	let mut dp = Vec3::default();
@@ -246,8 +255,20 @@ fn main() {
 	                 Vec3(0.0, 0.0, 1.0),
 	                 Vec3(1.0, 0.0, 1.0),
 	                 Vec3(0.0, 1.0, 1.0),
-	                 Vec3(1.0, 1.0, 1.0)];
+	                 Vec3(1.9, 1.0, 1.0)];
 
+	use slog::{Serializer, Record};
+	use slog::ser::Error;
+	impl slog::Serialize for Vec3 {
+		fn serialize(&self,
+		             record: &Record,
+		             key: &str,
+		             serializer: &mut Serializer)
+		             -> Result<(), Error> {
+			serializer.emit_str(&key, &format!["{:?}", *self])
+		}
+	}
+	info!["Tetra"; "value" => Vec3(0.0, 1.0, 2.0)];
 	info!["Collision"; "status" => bgjk(&cube1, &cube2)];
 
 	return;
