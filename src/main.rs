@@ -232,6 +232,21 @@ fn dcross3(a: Vec3, b: Vec3) -> Vec3 {
 	cross3(a, b, a)
 }
 
+#[test]
+fn square1() {
+	let cube1 = vec![Vec3(0.0, 0.0, 0.0),
+	                 Vec3(1.0, 0.0, 0.0),
+	                 Vec3(0.0, 1.0, 0.0),
+	                 Vec3(1.0, 1.0, 0.0)];
+
+	let cube2 = vec![Vec3(-2.0, 0.0, 0.0),
+	                 Vec3(-3.0, 0.0, 0.0),
+	                 Vec3(-2.0, 1.0, 0.0),
+	                 Vec3(-3.0, 1.0, 0.0)];
+
+	assert_eq![bgjk(&cube1, &cube2), false];
+}
+
 fn main() {
 
 	setup_logger();
@@ -265,7 +280,7 @@ fn main() {
 		             key: &str,
 		             serializer: &mut Serializer)
 		             -> Result<(), Error> {
-			serializer.emit_str(&key, &format!["{:?}", *self])
+			serializer.emit_arguments(&key, &format_args!["{:?}", *self])
 		}
 	}
 	info!["Tetra"; "value" => Vec3(0.0, 1.0, 2.0)];
