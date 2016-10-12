@@ -232,19 +232,85 @@ fn dcross3(a: Vec3, b: Vec3) -> Vec3 {
 	cross3(a, b, a)
 }
 
-#[test]
-fn square1() {
-	let cube1 = vec![Vec3(0.0, 0.0, 0.0),
-	                 Vec3(1.0, 0.0, 0.0),
-	                 Vec3(0.0, 1.0, 0.0),
-	                 Vec3(1.0, 1.0, 0.0)];
+mod tests {
 
-	let cube2 = vec![Vec3(-2.0, 0.0, 0.0),
-	                 Vec3(-3.0, 0.0, 0.0),
-	                 Vec3(-2.0, 1.0, 0.0),
-	                 Vec3(-3.0, 1.0, 0.0)];
+	use std::f32;
+	use super::{Vec3, bgjk};
 
-	assert_eq![bgjk(&cube1, &cube2), false];
+	macro_rules! pts {
+		($($e:expr),*) => {
+			vec![$(
+				Vec3($e.0, $e.1, $e.2)
+			),*]
+		};
+	}
+
+	#[test]
+	fn square1() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
+		let cube2 = pts![(-2.0, 0.0, 0.0), (-3.0, 0.0, 0.0), (-2.0, 1.0, 0.0), (-3.0, 1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn exact_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
+		let cube2 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn line_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
+		let cube2 = pts![(0.5, 1.0, 0.0), (0.5, -1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn point_overlap() {
+		let cube1 = pts![(0.5, 1.0, 0.0)];
+		let cube2 = pts![(0.5, 1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn point_no_overlap() {
+		let cube1 = pts![(0.5, 1.0, 0.0)];
+		let cube2 = pts![(1.0, 1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn empty_no_overlap() {
+		// An empty set defaults to a single point in origo in the set
+		let cube1: Vec<Vec3> = pts![];
+		let cube2 = pts![(1.0, 1.0, 1.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn side_by_side_squares() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
+		let cube2 = pts![(1.0, 0.0, 0.0), (2.0, 0.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn side_by_side_squares_offset() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
+		static TINY: f32 = f32::EPSILON;
+		let cube2 =
+			pts![(1.0 + TINY, 0.0, 0.0), (2.0, 0.0, 0.0), (1.0 + TINY, 1.0, 0.0), (2.0, 1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn single_point_square_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
+		let cube2 = pts![(1.0, 1.0, 0.0), (2.0, 1.0, 0.0), (1.0, 2.0, 0.0), (2.0, 2.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
 }
 
 fn main() {
