@@ -235,7 +235,9 @@ fn dcross3(a: Vec3, b: Vec3) -> Vec3 {
 mod tests {
 
 	use std::f32;
+	use std::f32::consts::PI;
 	use super::{Vec3, bgjk};
+	static EPS: f32 = f32::EPSILON;
 
 	macro_rules! pts {
 		($($e:expr),*) => {
@@ -298,9 +300,8 @@ mod tests {
 	#[test]
 	fn side_by_side_squares_offset() {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
-		static TINY: f32 = f32::EPSILON;
 		let cube2 =
-			pts![(1.0 + TINY, 0.0, 0.0), (2.0, 0.0, 0.0), (1.0 + TINY, 1.0, 0.0), (2.0, 1.0, 0.0)];
+			pts![(1.0 + EPS, 0.0, 0.0), (2.0, 0.0, 0.0), (1.0 + EPS, 1.0, 0.0), (2.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
 	}
 
@@ -309,6 +310,117 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(1.0, 1.0, 0.0), (2.0, 1.0, 0.0), (1.0, 2.0, 0.0), (2.0, 2.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn single_point_cube_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0),
+		                 (1.0, 0.0, 0.0),
+		                 (0.0, 1.0, 0.0),
+		                 (1.0, 1.0, 0.0),
+		                 (0.0, 0.0, 1.0),
+		                 (1.0, 0.0, 1.0),
+		                 (0.0, 1.0, 1.0),
+		                 (1.0, 1.0, 1.0)];
+		let cube2 = pts![(1.0, 1.0, 1.0),
+		                 (2.0, 1.0, 1.0),
+		                 (1.0, 2.0, 1.0),
+		                 (2.0, 2.0, 1.0),
+		                 (1.0, 1.0, 2.0),
+		                 (2.0, 1.0, 2.0),
+		                 (1.0, 2.0, 2.0),
+		                 (2.0, 2.0, 2.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn single_point_cube_non_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0),
+		                 (1.0, 0.0, 0.0),
+		                 (0.0, 1.0, 0.0),
+		                 (1.0, 1.0, 0.0),
+		                 (0.0, 0.0, 1.0),
+		                 (1.0, 0.0, 1.0),
+		                 (0.0, 1.0, 1.0),
+		                 (1.0, 1.0, 1.0)];
+		let cube2 = pts![(1.0, 1.0, 1.0+EPS),
+		                 (2.0, 1.0, 1.0+EPS),
+		                 (1.0, 2.0, 1.0+EPS),
+		                 (2.0, 2.0, 1.0+EPS),
+		                 (1.0, 1.0, 2.0),
+		                 (2.0, 1.0, 2.0),
+		                 (1.0, 2.0, 2.0),
+		                 (2.0, 2.0, 2.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn single_line_cube_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0),
+		                 (1.0, 0.0, 0.0),
+		                 (0.0, 1.0, 0.0),
+		                 (1.0, 1.0, 0.0),
+		                 (0.0, 0.0, 1.0),
+		                 (1.0, 0.0, 1.0),
+		                 (0.0, 1.0, 1.0),
+		                 (1.0, 1.0, 1.0)];
+		let cube2 = pts![(1.0, 1.0, 0.0),
+		                 (2.0, 1.0, 0.0),
+		                 (1.0, 2.0, 0.0),
+		                 (2.0, 2.0, 0.0),
+		                 (1.0, 1.0, 1.0),
+		                 (2.0, 1.0, 1.0),
+		                 (1.0, 2.0, 1.0),
+		                 (2.0, 2.0, 1.0)];
+		assert_eq![bgjk(&cube1, &cube2), true];
+	}
+
+	#[test]
+	fn circle_non_overlap() {
+		let (mut circle1, mut circle2) = (vec![], vec![]);
+		let units = 100;
+		for i in 0..units {
+			let radian = i as f32 / units as f32 * 2.0 * PI;
+			circle1.push(Vec3(radian.cos(), radian.sin(), 0.0));
+			circle2.push(Vec3(radian.cos(), radian.sin(), EPS));
+		}
+		assert_eq![bgjk(&circle1, &circle2), false];
+	}
+
+	#[test]
+	fn circle_overlap() {
+		let (mut circle1, mut circle2) = (vec![], vec![]);
+		let units = 100;
+		for i in 0..units {
+			let radian = i as f32 / units as f32 * 2.0 * PI;
+			circle1.push(Vec3(radian.cos(), radian.sin(), 0.0));
+			circle2.push(Vec3(radian.cos(), radian.sin(), 0.0));
+		}
+		assert_eq![bgjk(&circle1, &circle2), true];
+	}
+
+	#[test]
+	fn circle_section() {
+		let (mut circle1, mut circle2) = (vec![], vec![]);
+		let units = 100;
+		for i in 0..units {
+			let radian = i as f32 / units as f32 * 2.0 * PI;
+			circle1.push(Vec3(radian.cos(), radian.sin(), 0.0));
+			circle2.push(Vec3(radian.cos() + 0.5, radian.sin(), 0.0));
+		}
+		assert_eq![bgjk(&circle1, &circle2), true];
+	}
+
+	#[test]
+	fn circle_away() {
+		let (mut circle1, mut circle2) = (vec![], vec![]);
+		let units = 100;
+		for i in 0..units {
+			let radian = i as f32 / units as f32 * 2.0 * PI;
+			circle1.push(Vec3(radian.cos(), radian.sin(), 0.0));
+			circle2.push(Vec3(radian.cos() + 2.0+2.0*EPS, radian.sin(), 0.0));
+		}
+		assert_eq![bgjk(&circle1, &circle2), false];
 	}
 
 }
