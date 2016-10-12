@@ -239,7 +239,7 @@ mod tests {
 
 	macro_rules! pts {
 		($($e:expr),*) => {
-			vec![$(
+			[$(
 				Vec3($e.0, $e.1, $e.2)
 			),*]
 		};
@@ -283,7 +283,7 @@ mod tests {
 	#[test]
 	fn empty_no_overlap() {
 		// An empty set defaults to a single point in origo in the set
-		let cube1: Vec<Vec3> = pts![];
+		let cube1: [Vec3; 0] = pts![];
 		let cube2 = pts![(1.0, 1.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
 	}
