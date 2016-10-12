@@ -343,10 +343,10 @@ mod tests {
 		                 (1.0, 0.0, 1.0),
 		                 (0.0, 1.0, 1.0),
 		                 (1.0, 1.0, 1.0)];
-		let cube2 = pts![(1.0, 1.0, 1.0+EPS),
-		                 (2.0, 1.0, 1.0+EPS),
-		                 (1.0, 2.0, 1.0+EPS),
-		                 (2.0, 2.0, 1.0+EPS),
+		let cube2 = pts![(1.0, 1.0, 1.0 + EPS),
+		                 (2.0, 1.0, 1.0 + EPS),
+		                 (1.0, 2.0, 1.0 + EPS),
+		                 (2.0, 2.0, 1.0 + EPS),
 		                 (1.0, 1.0, 2.0),
 		                 (2.0, 1.0, 2.0),
 		                 (1.0, 2.0, 2.0),
@@ -418,7 +418,7 @@ mod tests {
 		for i in 0..units {
 			let radian = i as f32 / units as f32 * 2.0 * PI;
 			circle1.push(Vec3(radian.cos(), radian.sin(), 0.0));
-			circle2.push(Vec3(radian.cos() + 2.0+2.0*EPS, radian.sin(), 0.0));
+			circle2.push(Vec3(radian.cos() + 2.0 + 2.0 * EPS, radian.sin(), 0.0));
 		}
 		assert_eq![bgjk(&circle1, &circle2), false];
 	}
