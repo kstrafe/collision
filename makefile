@@ -1,5 +1,9 @@
 .PHONY:
 all:
+	cargo test -- --nocapture
+
+.PHONY:
+run:
 	cargo build
 	./target/debug/collision
 

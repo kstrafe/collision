@@ -3,26 +3,32 @@ use std::ops::{Neg, Sub};
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Vec3(pub f32, pub f32, pub f32);
 
-pub fn cwsa(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
-	let mut s = Vec3::ones();
+fn candidate(hull: &[Vec3]) -> Vec3 {
+	if hull.len() == 0 {
+		Vec3(0.0, 0.0, 0.0)
+	} else {
+		hull[0]
+	}
+}
+
+/// The SSIA (Stravers' Simple Intersection Algorithm)
+///
+/// Takes two points on each hull. Uses the difference as a vector.
+/// Finds a new optimal point for one hull, then the other.
+/// If the new vector has a dot that's < 0 then there is intersection
+pub fn ssia(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
+	let mut p = candidate(hull1);
+	let mut q = candidate(hull2);
+	let mut s = q - p;
+	let mut n = s.norm2sq();
+	let (mut lp, mut lq) = (p, q);
 	let i = s;
-	let p = farthest(hull1, s);
-	let q = farthest(hull2, -s);
-	let o = q - p;
+
 	loop {
-		if p.dot(s) < q.dot(-s) {
-			return false;
-		} else {
-			println!["{:#?}", s];
-			let ns = s - (q - p).scale(((q - p).dot(s)) * 2.0 / (q - p).norm2sq());
-			if ns == s {
-				return true;
-			}
-			s = ns;
-			if i.dot(s) < 0.0 {
-				return false;
-			}
-		}
+		p = farthest(hull1, s);
+		s = q - p;
+		q = farthest(hull2, -s);
+		s = q - p;
 	}
 }
 
@@ -244,7 +250,7 @@ mod tests {
 
 	use std::f32;
 	use std::f32::consts::PI;
-	use super::{Vec3, bgjk, cwsa};
+	use super::{Vec3, bgjk, ssia};
 	static EPS: f32 = f32::EPSILON;
 
 	macro_rules! pts {
@@ -260,7 +266,7 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(-2.0, 0.0, 0.0), (-3.0, 0.0, 0.0), (-2.0, 1.0, 0.0), (-3.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![cwsa(&cube1, &cube2), false];
+		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -268,6 +274,7 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
+		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -275,7 +282,16 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
 		let cube2 = pts![(0.5, 1.0, 0.0), (0.5, -1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
+		assert_eq![ssia(&cube1, &cube2), true];
 	}
+
+	#[test]
+	fn line_non_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
+		let cube2 = pts![(1.5, 1.0, 0.0), (1.5, -1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+	}
+
 
 	#[test]
 	fn point_overlap() {
@@ -340,6 +356,7 @@ mod tests {
 		                 (1.0, 2.0, 2.0),
 		                 (2.0, 2.0, 2.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
+		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -361,6 +378,7 @@ mod tests {
 		                 (1.0, 2.0, 2.0),
 		                 (2.0, 2.0, 2.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
+		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -382,6 +400,7 @@ mod tests {
 		                 (1.0, 2.0, 1.0),
 		                 (2.0, 2.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
+		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -403,6 +422,7 @@ mod tests {
 		                 (2.1, 2.0, 1.0),
 		                 (3.1, 2.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
+		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -424,6 +444,7 @@ mod tests {
 		                 (2.0, 2.0, 1.0),
 		                 (3.1, 2.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
+		// assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
