@@ -29,8 +29,8 @@ pub fn ssia(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
 		p[1] = p[0];
 		q[2] = q[1];
 		q[1] = q[0];
-		p[0] = farthest(hull1, s);
-		q[0] = farthest(hull2, -s);
+		p[0] = farthest(p[0], hull1, s);
+		q[0] = farthest(q[0], hull2, -s);
 		s = q[0] - p[0];
 
 		if s.norm2sq() == 0.0 {
@@ -55,6 +55,9 @@ pub fn ssia(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
 				if (dir3.dot(-s) > 0.0 || dir3.dot(-s2) > 0.0) && (dir4.dot(-s3) > 0.0 || dir4.dot(-s4) > 0.0) {
 					// Check if we can find an interpolation point, how do we do that?
 					// If we can prove a plane exists between the lines: no collision
+					// Problem: Farthest doesn't choose candidates based on angle from current position, we need that instead
+					// The reason is that we sometimes alternate between disjoin lines which actually would collide
+					// if we choose our farthest points correctly
 					if cross(dir, dir3).dot(q[0] - p[0]).abs() < 0.0001 {
 						return true;
 					}
