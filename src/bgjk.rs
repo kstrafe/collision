@@ -55,7 +55,9 @@ pub fn ssia(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
 				if (dir3.dot(-s) > 0.0 || dir3.dot(-s2) > 0.0) && (dir4.dot(-s3) > 0.0 || dir4.dot(-s4) > 0.0) {
 					// Check if we can find an interpolation point, how do we do that?
 					// If we can prove a plane exists between the lines: no collision
-					return true;
+					if cross(dir, dir3).dot(q[0] - p[0]).abs() < 0.0001 {
+						return true;
+					}
 				}
 				return false;
 			} else {
