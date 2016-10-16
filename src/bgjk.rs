@@ -11,67 +11,6 @@ fn candidate(hull: &[Vec3]) -> Vec3 {
 	}
 }
 
-/// The SSIA (Stravers' Simple Intersection Algorithm)
-///
-/// Takes two points on each hull. Uses the difference as a vector.
-/// Finds a new optimal point for one hull, then the other.
-/// If the new vector has a dot that's < 0 then there is intersection
-pub fn ssia(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
-	println![""];
-	let mut p = [Vec3::default(); 3];
-	let mut q = [Vec3::default(); 3];
-	p[0] = candidate(hull1);
-	q[0] = candidate(hull2);
-	let mut s = q[0] - p[0];
-
-	loop {
-		p[2] = p[1];
-		p[1] = p[0];
-		q[2] = q[1];
-		q[1] = q[0];
-		p[0] = farthest(p[0], hull1, s);
-		q[0] = farthest(q[0], hull2, -s);
-		s = q[0] - p[0];
-
-		if s.norm2sq() == 0.0 {
-			return true;
-		}
-
-		if p[0] == p[2] && q[0] == q[2] {
-			println!["p: {:?}", p];
-			println!["q: {:?}", q];
-			let s2 = q[1] - p[0];
-
-			let s3 = q[0] - p[1];
-			let s4 = q[1] - p[1];
-
-			let dir = p[1] - p[0];
-			let dir2 = -dir;
-
-			let dir3 = q[1] - q[0];
-			let dir4 = -dir3;
-
-			if (dir.dot(s) > 0.0 || dir.dot(s2) > 0.0) && (dir2.dot(s3) > 0.0 || dir2.dot(s4) > 0.0) {
-				if (dir3.dot(-s) > 0.0 || dir3.dot(-s2) > 0.0) && (dir4.dot(-s3) > 0.0 || dir4.dot(-s4) > 0.0) {
-					// Check if we can find an interpolation point, how do we do that?
-					// If we can prove a plane exists between the lines: no collision
-					// Problem: Farthest doesn't choose candidates based on angle from current position, we need that instead
-					// The reason is that we sometimes alternate between disjoin lines which actually would collide
-					// if we choose our farthest points correctly
-					if cross(dir, dir3).dot(q[0] - p[0]).abs() < 0.0001 {
-						return true;
-					}
-				}
-				return false;
-			} else {
-				return false;
-			}
-		}
-	}
-
-	true
-}
-
 /// The BGJK algorithm
 ///
 /// The Boolean-GJK algorithm gives us the answer to the question:
@@ -290,7 +229,7 @@ mod tests {
 
 	use std::f32;
 	use std::f32::consts::PI;
-	use super::{Vec3, bgjk, ssia};
+	use super::{Vec3, bgjk};
 	static EPS: f32 = f32::EPSILON;
 
 	macro_rules! pts {
@@ -306,7 +245,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(-2.0, 0.0, 0.0), (-3.0, 0.0, 0.0), (-2.0, 1.0, 0.0), (-3.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -314,7 +252,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -322,7 +259,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
 		let cube2 = pts![(0.5, 1.0, 0.0), (0.5, -1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -330,7 +266,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
 		let cube2 = pts![(1.5, 1.0, 0.0), (1.5, -1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -338,7 +273,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (0.01, 0.0, 0.0)];
 		let cube2 = pts![(0.005, 0.0, 0.1)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -346,7 +280,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
 		let cube2 = pts![(0.5, 0.0, 0.1)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -354,7 +287,6 @@ mod tests {
 		let cube1 = pts![(0.5, 1.0, 0.0)];
 		let cube2 = pts![(0.5, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -362,7 +294,6 @@ mod tests {
 		let cube1 = pts![(0.5, 1.0, 0.0)];
 		let cube2 = pts![(1.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -371,7 +302,6 @@ mod tests {
 		let cube1: [Vec3; 0] = pts![];
 		let cube2 = pts![(1.0, 1.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -379,7 +309,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(1.0, 0.0, 0.0), (2.0, 0.0, 0.0), (1.0, 1.0, 0.0), (2.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -388,7 +317,6 @@ mod tests {
 		let cube2 =
 			pts![(1.0 + EPS, 0.0, 0.0), (2.0, 0.0, 0.0), (1.0 + EPS, 1.0, 0.0), (2.0, 1.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -396,7 +324,6 @@ mod tests {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)];
 		let cube2 = pts![(1.0, 1.0, 0.0), (2.0, 1.0, 0.0), (1.0, 2.0, 0.0), (2.0, 2.0, 0.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -418,7 +345,6 @@ mod tests {
 		                 (1.0, 2.0, 2.0),
 		                 (2.0, 2.0, 2.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -440,7 +366,6 @@ mod tests {
 		                 (1.0, 2.0, 2.0),
 		                 (2.0, 2.0, 2.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -462,7 +387,6 @@ mod tests {
 		                 (1.0, 2.0, 1.0),
 		                 (2.0, 2.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -484,7 +408,6 @@ mod tests {
 		                 (2.1, 2.0, 1.0),
 		                 (3.1, 2.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), false];
-		assert_eq![ssia(&cube1, &cube2), false];
 	}
 
 	#[test]
@@ -506,7 +429,6 @@ mod tests {
 		                 (2.0, 2.0, 1.0),
 		                 (3.1, 2.0, 1.0)];
 		assert_eq![bgjk(&cube1, &cube2), true];
-		assert_eq![ssia(&cube1, &cube2), true];
 	}
 
 	#[test]
@@ -521,7 +443,6 @@ mod tests {
 			circle2.push(Vec3(radian.cos(), radian.sin(), EPS));
 		}
 		assert_eq![bgjk(&circle1, &circle2), false];
-		ssia(&circle1, &circle2);
 	}
 
 	#[test]
@@ -536,7 +457,6 @@ mod tests {
 			circle2.push(Vec3(radian.cos(), radian.sin(), 0.0));
 		}
 		assert_eq![bgjk(&circle1, &circle2), true];
-		ssia(&circle1, &circle2);
 	}
 
 	#[test]
@@ -551,7 +471,6 @@ mod tests {
 			circle2.push(Vec3(radian.cos() + 0.5, radian.sin(), 0.0));
 		}
 		assert_eq![bgjk(&circle1, &circle2), true];
-		ssia(&circle1, &circle2);
 	}
 
 	#[test]
@@ -566,7 +485,6 @@ mod tests {
 			circle2.push(Vec3(radian.cos() + 2.0 + 2.0 * EPS, radian.sin(), 0.0));
 		}
 		assert_eq![bgjk(&circle1, &circle2), false];
-		ssia(&circle1, &circle2);
 	}
 
 }
