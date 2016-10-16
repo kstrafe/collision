@@ -41,17 +41,23 @@ pub fn ssia(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
 			println!["p: {:?}", p];
 			println!["q: {:?}", q];
 			let s2 = q[1] - p[0];
-			let plane1 = dcross3(s2, s);
-			let plane2 = -dcross3(s, s2);
 
-			let dir1 = p[1] - p[0];
-			let dir2 = -dir1;
-			if
-				plane1.dot(dir1) > 0.0 && plane2.dot(dir1) > 0.0
-				&& plane1.dot(dir2) < 0.0 && plane2.dot(dir2) < 0.0
-				|| plane1.dot(dir1) < 0.0 && plane2.dot(dir1) < 0.0
-				&& plane1.dot(dir2) > 0.0 && plane2.dot(dir2) > 0.0 {
-				return true;
+			let s3 = q[0] - p[1];
+			let s4 = q[1] - p[1];
+
+			let dir = p[1] - p[0];
+			let dir2 = -dir;
+
+			let dir3 = q[1] - q[0];
+			let dir4 = -dir3;
+
+			if (dir.dot(s) > 0.0 || dir.dot(s2) > 0.0) && (dir2.dot(s3) > 0.0 || dir2.dot(s4) > 0.0) {
+				if (dir3.dot(-s) > 0.0 || dir3.dot(-s2) > 0.0) && (dir4.dot(-s3) > 0.0 || dir4.dot(-s4) > 0.0) {
+					// Check if we can find an interpolation point, how do we do that?
+					// If we can prove a plane exists between the lines: no collision
+					return true;
+				}
+				return false;
 			} else {
 				return false;
 			}
@@ -318,6 +324,22 @@ mod tests {
 	fn line_non_overlap() {
 		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
 		let cube2 = pts![(1.5, 1.0, 0.0), (1.5, -1.0, 0.0)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+		assert_eq![ssia(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn small_line_point_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (0.01, 0.0, 0.0)];
+		let cube2 = pts![(0.005, 0.0, 0.1)];
+		assert_eq![bgjk(&cube1, &cube2), false];
+		assert_eq![ssia(&cube1, &cube2), false];
+	}
+
+	#[test]
+	fn line_point_non_overlap() {
+		let cube1 = pts![(0.0, 0.0, 0.0), (1.0, 0.0, 0.0)];
+		let cube2 = pts![(0.5, 0.0, 0.1)];
 		assert_eq![bgjk(&cube1, &cube2), false];
 		assert_eq![ssia(&cube1, &cube2), false];
 	}
