@@ -48,14 +48,6 @@ fn main() {
 	setup_logger();
 	info!["Logger initialized"];
 
-	let cube1 =
-		vec![Vec3(0.0, 0.0, 0.0), Vec3(1.0, 0.0, 0.0), Vec3(0.0, 1.0, 0.0), Vec3(1.0, 1.0, 0.0)];
-
-	let cube2 = vec![Vec3(-2.0, 0.0, 0.0),
-	                 Vec3(-3.0, 0.0, 0.0),
-	                 Vec3(-2.0, 1.0, 0.0),
-	                 Vec3(-3.0, 1.0, 0.0)];
-
 	use slog::{Serializer, Record};
 	use slog::ser::Error;
 	impl slog::Serialize for Vec3 {
@@ -67,10 +59,6 @@ fn main() {
 			serializer.emit_arguments(&key, &format_args!["{:?}", *self])
 		}
 	}
-	info!["Tetra"; "value" => Vec3(0.0, 1.0, 2.0)];
-	info!["Collision"; "status" => bgjk(&cube1, &cube2)];
-
-	return;
 
 	let mut window = create_window();
 	let net = create_tilenet();
@@ -194,11 +182,11 @@ fn create_window() -> RenderWindow {
 }
 
 fn create_tilenet() -> tile_net::TileNet<usize> {
-	let mut net: TileNet<usize> = tile_net::TileNet::new((1000, 1000));
-	net.set_box(&0, (0, 0), (1000, 1000));
-	net.set_box(&1, (1, 1), (999, 999));
-	net.set_box(&0, (2, 2), (998, 998));
-	net.set_box(&1, (1, 970), (20, 990));
+	let mut net: TileNet<usize> = tile_net::TileNet::new(1000, 1000);
+	net.set_box(&0, (0, 0), (999, 999));
+	net.set_box(&1, (1, 1), (998, 998));
+	net.set_box(&0, (2, 2), (997, 997));
+	net.set_box(&1, (1, 970), (20, 989));
 	(0..20usize)
 		.inspect(|x| {
 			net.set(&1, (20 + x, 998 - x));
