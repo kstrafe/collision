@@ -1,13 +1,48 @@
+//! Defines 3-space and implements the boolean GJK (BGJK) algorithm
+//! for intersection testing.
 use std::ops::{Neg, Sub};
 
+/// Vector for use in the `bgjk` function
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Vec3(pub f32, pub f32, pub f32);
 
-fn candidate(hull: &[Vec3]) -> Vec3 {
-	if hull.len() == 0 {
-		Vec3(0.0, 0.0, 0.0)
-	} else {
-		hull[0]
+impl Eq for Vec3 {}
+
+impl PartialEq for Vec3 {
+	fn eq(&self, other: &Vec3) -> bool {
+		self.0 == other.0 && self.1 == other.1 && self.2 == other.2
+	}
+}
+
+impl Sub for Vec3 {
+	type Output = Vec3;
+	fn sub(self, right: Vec3) -> Self::Output {
+		Vec3(self.0 - right.0, self.1 - right.1, self.2 - right.2)
+	}
+}
+
+impl Vec3 {
+	fn dot(&self, right: Vec3) -> f32 {
+		self.0 * right.0 + self.1 * right.1 + self.2 * right.2
+	}
+
+	fn norm2sq(&self) -> f32 {
+		self.0 * self.0 + self.1 * self.1 + self.2 * self.2
+	}
+
+	fn ones() -> Vec3 {
+		Vec3(1.0, 1.0, 1.0)
+	}
+
+	fn scale(&self, factor: f32) -> Vec3 {
+		Vec3(self.0 * factor, self.1 * factor, self.2 * factor)
+	}
+}
+
+impl Neg for Vec3 {
+	type Output = Vec3;
+	fn neg(self) -> Self::Output {
+		Vec3(-self.0, -self.1, -self.2)
 	}
 }
 
@@ -42,6 +77,14 @@ pub fn bgjk(hull1: &[Vec3], hull2: &[Vec3]) -> bool {
 		} else if simplex(&mut ap, &mut bp, &mut cp, &mut dp, &mut sp, &mut w) {
 			return true;
 		}
+	}
+}
+
+fn candidate(hull: &[Vec3]) -> Vec3 {
+	if hull.len() == 0 {
+		Vec3(0.0, 0.0, 0.0)
+	} else {
+		hull[0]
 	}
 }
 
@@ -159,46 +202,6 @@ fn cross3(a: Vec3, b: Vec3, c: Vec3) -> Vec3 {
 
 fn dcross3(a: Vec3, b: Vec3) -> Vec3 {
 	cross3(a, b, a)
-}
-
-impl PartialEq for Vec3 {
-	fn eq(&self, other: &Vec3) -> bool {
-		self.0 == other.0 && self.1 == other.1 && self.2 == other.2
-	}
-}
-
-impl Eq for Vec3 {}
-
-impl Vec3 {
-	fn dot(&self, right: Vec3) -> f32 {
-		self.0 * right.0 + self.1 * right.1 + self.2 * right.2
-	}
-
-	fn ones() -> Vec3 {
-		Vec3(1.0, 1.0, 1.0)
-	}
-
-	fn norm2sq(&self) -> f32 {
-		self.0 * self.0 + self.1 * self.1 + self.2 * self.2
-	}
-
-	fn scale(&self, factor: f32) -> Vec3 {
-		Vec3(self.0 * factor, self.1 * factor, self.2 * factor)
-	}
-}
-
-impl Sub for Vec3 {
-	type Output = Vec3;
-	fn sub(self, right: Vec3) -> Self::Output {
-		Vec3(self.0 - right.0, self.1 - right.1, self.2 - right.2)
-	}
-}
-
-impl Neg for Vec3 {
-	type Output = Vec3;
-	fn neg(self) -> Self::Output {
-		Vec3(-self.0, -self.1, -self.2)
-	}
 }
 
 fn farthest(vertices: &[Vec3], direction: Vec3) -> Vec3 {

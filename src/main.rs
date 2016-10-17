@@ -52,11 +52,11 @@ fn main() {
 	use slog::ser::Error;
 	impl slog::Serialize for Vec3 {
 		fn serialize(&self,
-		             record: &Record,
+		             _: &Record,
 		             key: &str,
 		             serializer: &mut Serializer)
 		             -> Result<(), Error> {
-			serializer.emit_arguments(&key, &format_args!["{:?}", *self])
+			serializer.emit_arguments(key, &format_args!["{:?}", *self])
 		}
 	}
 
@@ -65,7 +65,6 @@ fn main() {
 	let mut tile = create_tile();
 	let mut coller = Rects::new();
 	let mut coller2 = RectsWhite::new();
-	let mut rarer = Rare::new(60);
 	let gravity = 0.00981;
 
 	'main: loop {
@@ -87,8 +86,6 @@ fn main() {
 		if Key::L.is_pressed() {
 			coller2.enqueue(Vector(side_speed, 0.0));
 		}
-
-		rarer.run(|| println!("{:?}", coller));
 
 		// This is a little messy. What can we do?
 		// Try x movement.
@@ -457,28 +454,5 @@ impl Drawable for Rects {
 		let mut block = create_block();
 		block.set_position(&Vector2f::new(self.pos.0 * 10.0, self.pos.1 * 10.0));
 		rt.draw(&block);
-	}
-}
-
-struct Rare {
-	count: usize,
-	every: usize,
-}
-
-impl Rare {
-	fn new(every: usize) -> Rare {
-		Rare {
-			count: 0,
-			every: every,
-		}
-	}
-
-	fn run<F: Fn()>(&mut self, function: F) {
-		if self.count == self.every {
-			self.count = 0;
-			function();
-		} else {
-			self.count += 1;
-		}
 	}
 }
