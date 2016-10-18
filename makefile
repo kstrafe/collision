@@ -4,8 +4,8 @@ all:
 
 .PHONY:
 run:
-	cargo build
-	./target/debug/collision
+	cargo build --release
+	./target/release/collision
 
 .PHONY:
 clip:
