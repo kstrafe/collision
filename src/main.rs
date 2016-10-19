@@ -25,6 +25,7 @@ use slog::DrainExt;
 
 use bgjk::*;
 
+static GRAVITY: f32 = 0.00981;
 
 fn setup_logger() {
 	let logger = if isatty::stderr_isatty() {
@@ -65,7 +66,6 @@ fn main() {
 	let mut tile = create_tile();
 	let mut coller = Rects::new();
 	let mut coller2 = RectsWhite::new();
-	let gravity = 0.00981;
 
 	'main: loop {
 		if handle_events(&mut window) {
@@ -135,9 +135,9 @@ fn main() {
 		}
 
 		coller.reset_dx();
-		coller.enqueue(Vector(0.0, gravity));
+		coller.enqueue(Vector(0.0, GRAVITY));
 		coller.solve(&net);
-		coller2.enqueue(Vector(0.0, gravity));
+		coller2.enqueue(Vector(0.0, GRAVITY));
 		coller2.solve(&net);
 
 		window.clear(&Color::new_rgb(255, 255, 255));
@@ -311,8 +311,7 @@ impl Collable<usize> for RectsWhite {
 				mov = Vector(mov.0 * 0.5, mov.1);
 				self.mov = mov;
 			} else {
-				let gravity = 0.00981;
-				if mov.norm2sq() > gravity {
+				if mov.norm2sq() > GRAVITY {
 					self.mov = Vector(mov.0, -mov.1 * 0.7);
 				} else {
 					mov.scale(0.5);
