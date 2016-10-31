@@ -5,6 +5,7 @@ authors = ["Bourgond Aries <macocio@gmail.com>"]
 
 [dependencies]
 acon = "0.5.1"
+bgjk = "0.1"
 isatty = "0.1"
 clippy = { version = "0.0", optional = true }
 rand = "0.3.14"

@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "dev", allow(unstable_features))]
 #![cfg_attr(feature = "dev", feature(plugin))]
 #![cfg_attr(feature = "dev", plugin(clippy))]
+extern crate bgjk;
 extern crate isatty;
 extern crate rand;
 extern crate sfml;
@@ -13,8 +14,6 @@ extern crate slog_stream;
 extern crate slog_term;
 extern crate tile_net;
 extern crate time;
-
-mod bgjk;
 
 use sfml::graphics::{Color, RectangleShape, RenderTarget, RenderWindow, Shape, Transformable,
                      Drawable, RenderStates, View};
@@ -51,15 +50,6 @@ fn main() {
 
 	use slog::{Serializer, Record};
 	use slog::ser::Error;
-	impl slog::Serialize for Vec3 {
-		fn serialize(&self,
-		             _: &Record,
-		             key: &str,
-		             serializer: &mut Serializer)
-		             -> Result<(), Error> {
-			serializer.emit_arguments(key, &format_args!["{:?}", *self])
-		}
-	}
 
 	let mut window = create_window();
 	let net = create_tilenet();
